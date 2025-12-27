@@ -4,6 +4,8 @@ This is a Claude Code plugin which you can conveniently install using the market
 
 It provides long running agents with conversational support from Codex / Gemini.
 
+The features are inspired by AmpCode, Anthropic's blog post on long running agentic harnesses, and several academic papers which study the "self-bias" problem.
+
 ## Agents
 
 | Agent | Model | Description |
