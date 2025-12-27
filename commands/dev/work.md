@@ -33,8 +33,8 @@ If no issue-id provided, pick from `tissue ready`.
 
 Repeat until LGTM:
 
-1. `/test` - ensure tests pass
-2. `/fmt` - format code
+1. `/fmt` - format code
+2. `/test` - ensure tests pass
 3. `/review <issue-id>` - get code review (reviews uncommitted changes)
 4. If CHANGES_REQUESTED: fix and repeat from step 1
 

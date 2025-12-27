@@ -94,7 +94,7 @@ The full log is saved in `$STATE_DIR` for reference. Only the summary is returne
 
 ## Review Process
 
-1. Run `git diff` to see changes
+1. Run `git diff` and `git diff --cached` to see all changes
 2. Read the full context of modified files
 3. Look for project style guides and check compliance
 4. Do your own review, note all issues you find

@@ -10,12 +10,17 @@ Thank you for your interest in contributing to trivial!
    cd trivial
    ```
 
-2. Run Claude Code with the plugin:
+2. Install dependencies:
    ```shell
-   claude --plugin-dir /path/to/trivial
+   ./install.sh
    ```
 
-3. Test that agents and commands are available:
+3. Run Claude Code with the plugin:
+   ```shell
+   claude --plugin-dir .
+   ```
+
+4. Test that agents and commands are available:
    ```shell
    /trivial:dev:plan What should I work on?
    ```

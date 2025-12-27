@@ -91,23 +91,17 @@ A typical workflow with trivial:
 # 1. Plan your work
 /plan Break down the authentication feature
 
-# 2. Pick an issue and work it
+# 2. Work an issue (runs test, fmt, review, commit automatically)
 /issue auth-1abc2def
 
-# 3. Review your changes
-/review
-
-# 4. Run tests
-/test
-
-# 5. Commit when ready
-/commit
+# 3. Or grind through your backlog
+/grind priority:1
 ```
 
-For continuous work through your issue backlog:
+For ad-hoc tasks without an issue tracker:
 
 ```shell
-/grind priority:1   # Work through all P1 issues
+/loop Add input validation to all API endpoints
 ```
 
 ## Examples
@@ -164,7 +158,7 @@ Install the tissue issue tracker:
 
 ```shell
 # See https://github.com/femtomc/tissue for installation
-cargo install tissue
+cargo install --git https://github.com/femtomc/tissue tissue
 ```
 
 Required for: `/work`, `/grind`, `/issue`

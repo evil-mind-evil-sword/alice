@@ -234,3 +234,5 @@ The command becomes available as `/trivial:category:your-command`.
 - [tissue](https://github.com/femtomc/tissue) - Local issue tracker for `/work`, `/grind`, `/issue`
 - [codex](https://github.com/openai/codex) - OpenAI CLI for oracle/reviewer/planner
 - [gemini-cli](https://github.com/google-gemini/gemini-cli) - Google CLI for documenter
+- [uv](https://github.com/astral-sh/uv) - Python package runner for `scripts/search.py`
+- [gh](https://cli.github.com/) - GitHub CLI for librarian agent
