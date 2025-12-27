@@ -14,6 +14,7 @@ If no issue-id provided, pick from `tissue ready`.
 
 1. If issue-id provided, use it. Otherwise:
    - Run `tissue ready` to see unblocked issues
+   - If **no issues available**: Report "No ready issues" and stop
    - Pick the highest priority (P1 > P2 > P3 > P4 > P5)
 2. Run `tissue show <issue-id>` to read details
 3. Run `tissue status <issue-id> in_progress` to claim it

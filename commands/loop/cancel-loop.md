@@ -8,20 +8,26 @@ Stop the current iteration loop.
 
 ## Steps
 
-1. Check for active issue:
+1. Find session state:
    ```bash
-   cat /tmp/trivial-loop-issue 2>/dev/null
+   STATE_DIR="/tmp/trivial-$TRIVIAL_SESSION_ID"
    ```
 
-2. If issue in progress, pause it:
+2. Check for active issue:
    ```bash
-   ISSUE_ID=$(cat /tmp/trivial-loop-issue 2>/dev/null)
+   cat "$STATE_DIR/issue" 2>/dev/null
+   ```
+
+3. If issue in progress, pause it:
+   ```bash
+   ISSUE_ID=$(cat "$STATE_DIR/issue" 2>/dev/null)
    [[ -n "$ISSUE_ID" ]] && tissue status "$ISSUE_ID" paused
    ```
 
-3. Clean up:
+4. Clean up:
    ```bash
-   rm -f /tmp/trivial-loop-*
+   rm -rf "$STATE_DIR"
+   unset TRIVIAL_SESSION_ID
    ```
 
-4. Summarize what was accomplished
+5. Summarize what was accomplished

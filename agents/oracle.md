@@ -63,9 +63,29 @@ You **advise only** - you do NOT modify code. You are called when the main agent
 
 ## Output Format
 
-Structure your analysis:
-1. **Problem understanding** - Restate what's being asked
-2. **Claude analysis** - Your deep dive
-3. **Codex perspective** - What Codex thinks
-4. **Synthesis** - Reconciled recommendation (note agreements/disagreements)
-5. **Alternatives** - Other approaches considered
+Always return this structure:
+
+```
+## Result
+
+**Status**: RESOLVED | NEEDS_INPUT | UNRESOLVED
+**Summary**: One-line recommendation
+
+## Problem
+[Restatement of the problem]
+
+## Claude Analysis
+[Your deep dive]
+
+## Codex Analysis
+[What Codex thinks]
+
+## Recommendation
+[Synthesized recommendation]
+
+## Alternatives
+[Other approaches considered and why rejected]
+
+## Next Steps
+[Concrete actions to take]
+```

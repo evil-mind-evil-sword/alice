@@ -71,23 +71,33 @@ You collaborate with Codex (OpenAI) as a discussion partner to catch more issues
 
 ## Output Format
 
+Always return this structure:
+
 ```
-## Claude Review
-[Your findings]
+## Result
 
-## Codex Review
-[Codex's findings]
+**Status**: LGTM | CHANGES_REQUESTED
+**Summary**: One-line overall assessment
 
-## Synthesized Verdict
+## Issues
 
-{
-  "verdict": "LGTM" | "CHANGES_REQUESTED",
-  "summary": "Brief overall assessment",
-  "claude_issues": [...],
-  "codex_issues": [...],
-  "agreed_issues": [...],
-  "disputed_issues": [...]
-}
+### Errors (must fix)
+- file.ext:123 - description
+
+### Warnings (should fix)
+- file.ext:45 - description
+
+### Info (suggestions)
+- file.ext:67 - description
+
+## Claude Analysis
+[Your detailed findings]
+
+## Codex Analysis
+[Codex's detailed findings]
+
+## Disputed
+[Any disagreements between Claude and Codex, with both perspectives]
 ```
 
 ## Standards
@@ -96,4 +106,4 @@ You collaborate with Codex (OpenAI) as a discussion partner to catch more issues
 - **warning**: Should fix, but not blocking
 - **info**: Suggestions for improvement
 
-If Claude and Codex disagree on severity, explain both perspectives.
+Conservative default: if either reviewer flags an error, it's an error.

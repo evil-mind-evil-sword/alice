@@ -8,6 +8,18 @@ Run code review on current changes using the reviewer agent.
 /review [issue-id]
 ```
 
+## Pre-check
+
+First, verify there are changes to review:
+```bash
+git diff --stat
+git diff --cached --stat
+```
+
+If **no changes** (both empty):
+- Report "No changes to review"
+- Stop
+
 ## Steps
 
 Invoke the reviewer agent:

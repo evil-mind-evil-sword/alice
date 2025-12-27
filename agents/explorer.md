@@ -31,13 +31,20 @@ Search and explain the local codebase:
 
 ## Output Format
 
+Always return this structure:
+
 ```
-## Found: [what you were looking for]
+## Result
 
-**Location**: src/path/file.ext:123
+**Status**: FOUND | NOT_FOUND | PARTIAL
+**Summary**: One-line answer
 
-**Summary**: Brief explanation
+## Location
+- src/path/file.ext:123 - primary result
 
-**Related**:
-- src/other/file.ext:45 - related thing
+## Details
+[Explanation of what was found]
+
+## Related
+- src/other/file.ext:45 - related code
 ```
