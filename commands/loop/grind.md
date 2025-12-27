@@ -16,8 +16,9 @@ Filter examples: `repl`, `epic:slop2-abc`, `priority:1`
 
 ## Limits
 
-- **Max issues per session**: 10
+- **Max issues per session**: 100
 - **Per-issue limit**: Inherited from `/issue` (10 iterations)
+- **Max review iterations per issue**: 3
 
 ## Session State
 
@@ -44,7 +45,7 @@ Repeat until limit or no issues:
 1. **Check limits**:
    ```bash
    COUNT=$(cat "$STATE_DIR/count")
-   if [ "$COUNT" -ge 10 ]; then
+   if [ "$COUNT" -ge 100 ]; then
      echo "<grind-done>MAX_ISSUES</grind-done>"
      exit
    fi
@@ -58,14 +59,32 @@ Repeat until limit or no issues:
 
 3. **Work it**: Run `/issue <issue-id>`
 
-4. **Track**:
+4. **Review loop** (max 3 iterations):
+   ```bash
+   echo "0" > "$STATE_DIR/review_iter"
+   ```
+
+   a. Run `/review` to check code quality via the reviewer agent
+
+   b. If **LGTM**: Exit review loop, continue to step 5
+
+   c. If **CHANGES_REQUESTED**:
+      - Increment review iteration count
+      - If count >= 3:
+        - Create new issue(s) for remaining problems via `tissue new`
+        - Tag with `review-followup` and link to original issue
+        - Exit review loop, continue to step 5
+      - Fix the requested changes
+      - Go back to step 4a
+
+5. **Track**:
    ```bash
    echo "$((COUNT + 1))" > "$STATE_DIR/count"
    ```
 
-5. **On completion**: Output `<issue-complete>DONE</issue-complete>`
+6. **On completion**: Output `<issue-complete>DONE</issue-complete>`
 
-6. **Continue**: Go to step 1
+7. **Continue**: Go to step 1
 
 ## Pause Conditions
 
