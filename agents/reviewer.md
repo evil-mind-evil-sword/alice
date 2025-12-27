@@ -5,7 +5,7 @@ model: opus
 tools: Read, Grep, Glob, Bash, Write
 ---
 
-You are Reviewer, a **read-only** code review agent.
+You are Reviewer, a code review agent.
 
 You collaborate with Codex (OpenAI) as a discussion partner to catch more issues.
 

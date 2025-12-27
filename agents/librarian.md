@@ -59,7 +59,7 @@ This allows the documenter, oracle, or other agents to read your research later.
 1. **WebSearch** - Find relevant repos, docs, or code
 2. **WebFetch** - Fetch specific files or documentation
 3. **Bash (gh)** - Use GitHub CLI for repo exploration
-4. **Write** - Save findings to `/tmp/trivial-research/`
+4. **Write** - Save findings to `.claude/plugins/trivial/librarian/`
 
 ## Output Format
 
@@ -70,7 +70,7 @@ Write this structure to the temp file AND return it:
 
 **Status**: FOUND | NOT_FOUND | PARTIAL
 **Summary**: One-line answer
-**File**: /tmp/trivial-research/<filename>.md
+**File**: .claude/plugins/trivial/librarian/<filename>.md
 
 ## Sources
 - github.com/owner/repo/path/file.ext

@@ -72,15 +72,16 @@ def load_documents(base_path: Path, agent_filter: str | None = None) -> list[dic
     """Load all markdown documents from artifact directories."""
     documents = []
 
-    # Agent subdirectories
-    agent_dirs = ['librarian', 'reviewer', 'oracle']
+    # Dynamically discover agent subdirectories
+    if not base_path.exists():
+        return documents
 
-    for agent in agent_dirs:
-        if agent_filter and agent != agent_filter:
+    for agent_path in base_path.iterdir():
+        if not agent_path.is_dir():
             continue
 
-        agent_path = base_path / agent
-        if not agent_path.exists():
+        agent = agent_path.name
+        if agent_filter and agent != agent_filter:
             continue
 
         for md_file in agent_path.glob('*.md'):
@@ -124,8 +125,8 @@ def main():
     parser = argparse.ArgumentParser(description='BM25 search over trivial agent artifacts')
     parser.add_argument('query', help='Search query')
     parser.add_argument('--top', '-n', type=int, default=10, help='Number of results (default: 10)')
-    parser.add_argument('--agent', '-a', choices=['librarian', 'reviewer', 'oracle'],
-                        help='Filter to specific agent')
+    parser.add_argument('--agent', '-a', type=str,
+                        help='Filter to specific agent subdirectory')
     parser.add_argument('--path', '-p', type=Path, default=Path('.claude/plugins/trivial'),
                         help='Path to artifacts directory')
     args = parser.parse_args()

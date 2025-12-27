@@ -33,23 +33,7 @@ You **advise only** - you do NOT modify code. You are called when the main agent
 ./scripts/search.py --agent librarian "specific query"
 ```
 
-**Write to** `.claude/plugins/trivial/oracle/`:
-```bash
-mkdir -p .claude/plugins/trivial/oracle
-```
-
-**Include this metadata header** for cross-referencing with Claude Code conversation logs:
-```markdown
----
-agent: oracle
-created: <ISO timestamp>
-project: <working directory>
-problem: <problem summary>
-status: RESOLVED | NEEDS_INPUT | UNRESOLVED
----
-```
-
-Timestamps can be matched to conversation logs in `~/.claude/projects/`.
+Oracle is read-only and returns recommendations in its output format. It does not persist artifacts.
 
 ## Constraints
 

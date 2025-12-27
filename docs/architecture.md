@@ -65,7 +65,7 @@ Minimal metadata for the plugin:
 ```json
 {
   "name": "trivial",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Multi-model development agents...",
   "author": { "name": "femtomc" }
 }
