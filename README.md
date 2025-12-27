@@ -1,6 +1,6 @@
 # trivial
 
-Multi-model development agents for Claude Code.
+Long running agents with conversational support from Codex / Gemini, made easy.
 
 ## Agents
 
