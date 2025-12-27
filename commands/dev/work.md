@@ -1,57 +1,56 @@
 # Work Command
 
-Pick up an issue from the tracker and work it to completion.
+Work a single issue to completion.
+
+## Usage
+
+```
+/work [issue-id]
+```
+
+If no issue-id provided, pick from `tissue ready`.
 
 ## Phase 1: Select Issue
 
-1. Run `tissue ready` to see issues with no blockers
-2. Pick the highest priority issue (P1 > P2 > P3 > P4 > P5)
-3. Run `tissue show <issue-id>` to read full details
-4. Run `tissue status <issue-id> in_progress` to claim it
+1. If issue-id provided, use it. Otherwise:
+   - Run `tissue ready` to see unblocked issues
+   - Pick the highest priority (P1 > P2 > P3 > P4 > P5)
+2. Run `tissue show <issue-id>` to read details
+3. Run `tissue status <issue-id> in_progress` to claim it
 
 ## Phase 2: Implement
 
-1. **Understand** the requirements fully before writing code
-2. **Explore** relevant code to understand existing patterns
-3. **Plan** your approach
-4. **Implement** following project conventions:
-   - Look for style guides in `.claude/` or project docs
-   - Run `/fmt` before considering work complete
-   - Run `/test` to ensure all tests pass
-   - Add tests if the change warrants them
+1. **Understand** requirements before coding
+2. **Explore** existing patterns
+3. **Implement** following project conventions
 
 ## Phase 3: Review Cycle
 
-When you believe the implementation is complete:
+Repeat until LGTM:
 
-1. Run `/fmt` and `/test` one final time
-2. Run `/review <issue-id>` to get code review
-
-3. Review the results:
-   - If changes requested: Address the feedback and re-run review
-   - If LGTM: Proceed to Phase 4
+1. `/test` - ensure tests pass
+2. `/fmt` - format code
+3. Commit: `git add . && git commit -m "type: description"`
+4. `/review <issue-id>` - get code review
+5. If CHANGES_REQUESTED: fix and repeat from step 1
 
 ## Phase 4: Complete
 
-1. Close the issue: `tissue status <issue-id> closed`
-2. Commit and push:
-   ```bash
-   git add <modified-files>
-   git commit -m "type: description"
-   git push
-   ```
-
-   Commit types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-
+1. `tissue status <issue-id> closed`
+2. `git push`
 3. Summarize what was accomplished
-4. **Stop** - do not automatically pick up another issue
 
 ## Rules
 
-- Work **ONE** issue at a time
-- **Always** run `/fmt` before completing
-- **Always** run `/test` before completing
-- **Do not skip the review cycle**. **DO NOT do the review yourself**.
-- Review must pass (LGTM) before closing an issue
-- If tests fail, investigate and fix the root cause
-- If blocked, document the blocker with `tissue comment <issue-id> -m "..."`
+- Do NOT skip the review cycle
+- Do NOT review your own code
+- If blocked: `tissue comment <issue-id> -m "..."`
+
+## Available Agents
+
+Delegate with Task tool:
+- **reviewer** - Code review (Opus + Codex)
+- **oracle** - Deep reasoning on hard problems
+- **explorer** - "Where is X?" local searches
+- **librarian** - Remote code/docs research
+- **documenter** - Technical writing (Opus + Gemini)

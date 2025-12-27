@@ -1,29 +1,27 @@
 ---
-description: Cancel the active iteration loop
+description: Cancel the active loop
 ---
 
 # Cancel Loop
 
-The user wants to cancel the iteration loop.
+Stop the current iteration loop.
 
-1. Check if there's an active issue:
+## Steps
+
+1. Check for active issue:
    ```bash
    cat /tmp/trivial-loop-issue 2>/dev/null
    ```
 
-2. If an issue was being worked on, pause it:
+2. If issue in progress, pause it:
    ```bash
    ISSUE_ID=$(cat /tmp/trivial-loop-issue 2>/dev/null)
-   if [[ -n "$ISSUE_ID" ]]; then
-       tissue status "$ISSUE_ID" paused
-       tissue comment "$ISSUE_ID" -m "[loop] Cancelled by user"
-   fi
+   [[ -n "$ISSUE_ID" ]] && tissue status "$ISSUE_ID" paused
    ```
 
-3. Remove all loop state files:
+3. Clean up:
    ```bash
-   rm -f /tmp/trivial-loop-active /tmp/trivial-loop-issue /tmp/trivial-loop-mode /tmp/trivial-loop-context
+   rm -f /tmp/trivial-loop-*
    ```
 
-4. Confirm to the user that the loop has been cancelled
-5. Summarize what was accomplished so far
+4. Summarize what was accomplished

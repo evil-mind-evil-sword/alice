@@ -1,51 +1,44 @@
 ---
-description: Start an iterative loop on a tissue issue
+description: Work an issue with iteration (retries on failure)
 ---
 
-# Issue Loop Command
+# Issue Command
 
-You are entering an iterative development loop for issue: **$ARGUMENTS**
+Like `/work`, but with iteration - keep trying until the issue is resolved.
+
+## Usage
+
+```
+/issue <issue-id>
+```
 
 ## Setup
 
-1. First, fetch the issue details:
-   ```bash
-   tissue show $ARGUMENTS
-   ```
-
-2. Claim the issue:
-   ```bash
-   tissue status $ARGUMENTS in_progress
-   ```
-
-3. Initialize the loop state:
-   ```bash
-   echo "$ARGUMENTS" > /tmp/trivial-loop-issue
-   echo "0" > /tmp/trivial-loop-active
-   ```
+```bash
+echo "$ARGUMENTS" > /tmp/trivial-loop-issue
+```
 
 ## Workflow
 
-1. Work on the issue incrementally
-2. Run `/test` after each significant change
-3. Run `/fmt` before considering work complete
+Run `/work $ARGUMENTS` with these additions:
 
-## Review Cycle (repeat until LGTM)
-
-When you believe the issue is resolved:
-
-1. Ensure tests pass: `/test`
-2. Format code: `/fmt`
-3. Commit: `git add . && git commit -m "fix/feat: <description>"`
-4. Run review: `/review $ARGUMENTS`
-5. If CHANGES_REQUESTED: address the feedback, then repeat from step 1
-6. If LGTM: output `<loop-done>COMPLETE</loop-done>`
+1. **On failure**: Don't give up. Analyze what went wrong and retry.
+2. **On stuck**: Check your iteration context (below) before trying again.
+3. **On success**: Output `<loop-done>COMPLETE</loop-done>`
 
 ## Iteration Context
 
-Look at your previous work:
-- Check modified files: `git status`
-- Review recent commits: `git log --oneline -10`
-- Re-read the issue if needed: `tissue show $ARGUMENTS`
+Before each retry, review your previous work:
+- `git status` - modified files
+- `git log --oneline -10` - recent commits
+- `tissue show $ARGUMENTS` - re-read the issue
 
-Keep iterating until the issue is resolved and review passes. Do not give up.
+## Completion
+
+When `/work` succeeds (review passes, issue closed):
+
+```
+<loop-done>COMPLETE</loop-done>
+```
+
+Keep iterating until success. Do not give up.
