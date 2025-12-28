@@ -1,13 +1,13 @@
 # idle
 
-**Agentic harness for Claude Code.** Long-running loops, multi-model consensus, message passing.
+**An opinionated paint job for Claude Code.** Long-running loops, multi-model consensus, message passing.
 
 A runtime that orchestrates long-running autonomous workflows where agents collaborate through message passing and validate decisions via multi-model consensus.
 
 ## Why?
 
-- **Harness:** Provides a structured runtime that controls agent execution, manages worktrees, and handles state persistence across sessions.
-- **Loop:** Enables agents to break out of single-turn interactions, performing continuous iterative work until a task is objectively complete.
+- **Outer harness:** Provides a structured runtime that controls agent execution, manages worktrees, and handles state persistence across sessions.
+- **Loop:** Enables agents to break out of single-turn interactions to perform continuous iterative work.
 - **Consensus:** Mitigates LLM self-bias and hallucinations by requiring agreement between distinct models (or fresh contexts) before committing to critical paths.
 
 ## Agents
@@ -22,9 +22,9 @@ A runtime that orchestrates long-running autonomous workflows where agents colla
 
 ### How it works
 
-idle acts as a harness that orchestrates specialized agents within a continuous loop. Fast agents handle information retrieval, while reasoning agents drive the core logic. To prevent error propagation, the harness enforces a consensus mechanism for high-stakes decisions.
+idle acts as an "outer harness" for Claude Code that orchestrates specialized agents within a continuous loop. Fast agents handle information retrieval, while reasoning agents drive the core logic. To prevent error propagation, the harness enforces a consensus mechanism for high-stakes decisions.
 
-When the primary agent proposes a critical action, the harness pauses execution to consult a secondary model. If an external model (Codex, Gemini) is available, it provides a truly independent perspective. If not, the harness falls back to `claude -p`, creating a fresh context to break the self-refinement loop. This ensures that the agentic loop proceeds only when there is consensus on the path forward.
+When the primary agent proposes a critical action, the harness pauses execution to consult a secondary model. If an external model (Codex, Gemini) is available, it provides an independent perspective. If not, the harness falls back to `claude -p`, creating a fresh context to break the self-refinement loop. This ensures that the agentic loop proceeds only when there is consensus on the path forward.
 
 ### Why Consensus?
 
