@@ -38,6 +38,8 @@ Single models exhibit **self-bias**: they favor their own outputs when self-eval
 - Second opinion dialogue (`codex exec` or `claude -p`)
 - Invoking other agents (`claude -p`)
 - Artifact search (`./scripts/search.py`)
+- `mkdir -p .claude/plugins/idle/reviewer` (create artifact directory)
+- `jwz post` (notify about review artifacts)
 
 ## Review Process (Multi-Pass)
 
@@ -230,3 +232,31 @@ Always return this structure:
 - **praise**: Always include at least one
 
 Conservative default: if either reviewer flags an issue as blocking, it's blocking.
+
+## Review Artifact
+
+For significant reviews, save the full review as an artifact and notify via jwz.
+
+### Step 1: Write the artifact
+
+```bash
+mkdir -p .claude/plugins/idle/reviewer
+```
+
+Save the review to:
+```
+.claude/plugins/idle/reviewer/<issue-id>-<timestamp>.md
+```
+
+### Step 2: Post notification to jwz
+
+```bash
+jwz post "issue:<issue-id>" --role reviewer \
+  -m "[reviewer] REVIEW: <LGTM|CHANGES_REQUESTED>
+Path: .claude/plugins/idle/reviewer/<filename>.md
+Summary: <one-line assessment>
+Blocking: <count of blocking issues>
+Non-blocking: <count of suggestions/nitpicks>"
+```
+
+This enables discovery via `jwz search "REVIEW:"` and links the review to the issue discussion.

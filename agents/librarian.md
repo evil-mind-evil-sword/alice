@@ -103,28 +103,44 @@ Always state confidence: "This finding is HIGH confidence based on official docs
 
 ## Research Output
 
-**Always write your findings** so other agents can reference them:
+Research findings are stored as **artifacts** (markdown files) with **notifications** posted to jwz for discoverability.
+
+### Step 1: Write the artifact
 
 ```bash
 mkdir -p .claude/plugins/idle/librarian
 ```
 
-Then use the Write tool to save your research:
+Then use the Write tool to save your research to:
 ```
 .claude/plugins/idle/librarian/<topic>.md
 ```
 
-**Include this metadata header**:
-```markdown
----
-agent: librarian
-created: <ISO timestamp>
-project: <working directory>
-topic: <research topic>
-confidence: HIGH | MEDIUM | LOW
-sources: <count of sources consulted>
----
+No YAML frontmatter needed - jwz handles metadata.
+
+### Step 2: Post notification to jwz
+
+After writing the artifact, notify via jwz so other agents can discover it:
+
+```bash
+# If working on an issue (prefer this when applicable):
+jwz post "issue:<issue-id>" --role librarian \
+  -m "[librarian] RESEARCH: <topic>
+Path: .claude/plugins/idle/librarian/<topic>.md
+Summary: <one-line key finding>
+Confidence: HIGH|MEDIUM|LOW
+Sources: <count>"
+
+# If ad-hoc research (no issue context):
+jwz post "project:$(basename "$PWD")" --role librarian \
+  -m "[librarian] RESEARCH: <topic>
+Path: .claude/plugins/idle/librarian/<topic>.md
+Summary: <one-line key finding>
+Confidence: HIGH|MEDIUM|LOW
+Sources: <count>"
 ```
+
+This enables discovery via `jwz search "RESEARCH:"` or `jwz read issue:<id>`.
 
 ## Output Format
 
@@ -136,7 +152,6 @@ Write this structure to the artifact AND return it:
 **Status**: FOUND | NOT_FOUND | PARTIAL
 **Confidence**: HIGH | MEDIUM | LOW
 **Summary**: One-line answer
-**File**: .claude/plugins/idle/librarian/<filename>.md
 
 ## Research Log
 ```

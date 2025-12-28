@@ -36,6 +36,7 @@ You **advise only** - you do NOT modify code. You are called when the main agent
 - Second opinion dialogue (`codex exec` or `claude -p`)
 - Invoking other agents (`claude -p`)
 - Artifact search (`./scripts/search.py`)
+- `jwz post` (post analysis summaries for discoverability)
 
 ## Analysis Framework
 
@@ -217,3 +218,28 @@ Always return this structure, separating facts from interpretations:
 ## Next Steps
 [Concrete actions to take]
 ```
+
+## Posting to jwz
+
+After completing significant analysis, post a summary to jwz for discoverability:
+
+```bash
+jwz post "issue:<issue-id>" --role oracle \
+  -m "[oracle] ANALYSIS: <topic>
+Status: RESOLVED|NEEDS_INPUT|UNRESOLVED
+Confidence: HIGH|MEDIUM|LOW
+Summary: <one-line recommendation>
+Key finding: <most important insight>"
+```
+
+For design decisions or architectural guidance:
+
+```bash
+jwz post "issue:<issue-id>" --role oracle \
+  -m "[oracle] DECISION: <topic>
+Recommendation: <chosen approach>
+Alternatives considered: <count>
+Tradeoffs: <key tradeoff summary>"
+```
+
+This enables other agents to discover prior analysis via `jwz search "ANALYSIS:"` or `jwz read issue:<id>`.

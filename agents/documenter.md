@@ -95,6 +95,7 @@ For each claim, verify:
 - Writer model commands (`gemini` or `claude -p`)
 - Invoking Librarian (`claude -p`)
 - Artifact search (`./scripts/search.py`)
+- `jwz post` (notify about completed documentation)
 
 **You CAN and SHOULD:**
 - Create/edit markdown files in `docs/`
@@ -339,3 +340,29 @@ Always end with:
 - [x] Writer drafts reviewed and corrected
 - [ ] Any gaps or TODOs noted
 ```
+
+## Posting to jwz
+
+After writing documentation, notify via jwz for discoverability:
+
+```bash
+jwz post "issue:<issue-id>" --role documenter \
+  -m "[documenter] DOCS: <doc-title>
+Path: docs/<filename>.md
+Type: Tutorial|How-to|Reference|Explanation
+Audience: <target audience>
+Sections: <count of main sections>"
+```
+
+For ad-hoc documentation (no issue context):
+
+```bash
+jwz post "project:$(basename "$PWD")" --role documenter \
+  -m "[documenter] DOCS: <doc-title>
+Path: docs/<filename>.md
+Type: Tutorial|How-to|Reference|Explanation
+Audience: <target audience>
+Sections: <count of main sections>"
+```
+
+This enables discovery via `jwz search "DOCS:"` and links documentation to issue discussions.

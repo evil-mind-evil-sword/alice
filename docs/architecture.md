@@ -486,12 +486,79 @@ Examples:
 
 | Use Case | Mechanism | Location |
 |----------|-----------|----------|
-| Quick status update | Message | `.jwz/` |
-| Research finding (quick) | Message | `.jwz/` |
-| Research finding (full) | Artifact | `.claude/plugins/idle/{agent}/` |
-| Design decision | Artifact + message | Both |
+| Status updates | jwz only | `.jwz/` |
+| Quick findings | jwz only | `.jwz/` |
+| Research reports | Artifact + jwz notification | `.claude/plugins/idle/{agent}/` |
+| Code reviews | Artifact + jwz notification | `.claude/plugins/idle/{agent}/` |
+| Design discussions | jwz thread | `.jwz/` |
+| Design decisions | Artifact + jwz notification | `.claude/plugins/idle/{agent}/` |
 
-Messages are ephemeral notes; artifacts are durable references.
+**Boundary test:** "Would someone need this without the conversation context?" If yes, it's an artifact.
+
+Messages provide the conversation graph (threading, discovery). Artifacts provide durable content.
+
+### Artifact Notification Protocol
+
+When an agent creates an artifact (markdown file), it MUST post a notification to jwz for discoverability:
+
+```bash
+jwz post "issue:<issue-id>" --role <agent-name> \
+  -m "[<agent>] <TYPE>: <topic>
+Path: .claude/plugins/idle/<agent>/<filename>.md
+Summary: <one-line summary>
+<type-specific fields>"
+```
+
+**Standard notification types:**
+
+| Agent | Type | Additional Fields |
+|-------|------|-------------------|
+| librarian | RESEARCH | `Confidence:`, `Sources:` |
+| reviewer | REVIEW | `Blocking:`, `Non-blocking:` |
+| oracle | ANALYSIS | `Status:`, `Confidence:`, `Key finding:` |
+| oracle | DECISION | `Recommendation:`, `Alternatives:`, `Tradeoffs:` |
+| documenter | DOCS | `Sections:` |
+
+**Discovery patterns:**
+
+```bash
+# Find all artifacts for an issue
+jwz read "issue:auth-123" | grep "Path:"
+
+# Find all research across project
+jwz search "RESEARCH:"
+
+# Find all reviews
+jwz search "REVIEW:"
+
+# Find oracle analyses
+jwz search "ANALYSIS:"
+```
+
+### Thread Continuation
+
+Agents discovering prior work should check jwz first:
+
+```bash
+# See recent discussion for an issue
+jwz read "issue:auth-123" --limit 10
+
+# Find specific agent's contributions
+jwz search "issue:auth-123" --from oracle
+```
+
+**Handoff protocol:** When completing significant work, post a summary:
+
+```
+[librarian] COMPLETE: API research
+Key findings:
+- Rate limiting uses token bucket algorithm
+- Deprecated endpoints in v3
+Artifacts: .claude/plugins/idle/librarian/rate-limiting.md
+Next steps: Documenter should update API reference
+```
+
+**Note:** `explorer` is a utility agent for codebase navigation and does not post to jwz. Only agents producing artifacts or significant analyses (librarian, reviewer, oracle, documenter) participate in the notification protocol.
 
 ## Adding New Agents
 
