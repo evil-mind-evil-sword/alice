@@ -80,6 +80,13 @@ fi
 
 # Check if worktree already exists
 if git worktree list | grep -qF "$WORKTREE_PATH"; then
+    # Verify path/branch consistency (catches case-insensitive filesystem collisions)
+    EXISTING_REF=$(git -C "$WORKTREE_PATH" symbolic-ref -q HEAD 2>/dev/null || echo "DETACHED")
+    if [[ "$EXISTING_REF" != "refs/heads/$BRANCH" ]]; then
+        echo "Error: Worktree path collision - $WORKTREE_PATH exists but is on $EXISTING_REF, not $BRANCH"
+        echo "This may be a case-insensitive filesystem collision (e.g., 'ABC' vs 'abc')."
+        exit 1
+    fi
     echo "Reusing existing worktree at $WORKTREE_PATH"
 else
     # Create worktree with new branch
