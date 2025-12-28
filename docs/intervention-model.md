@@ -45,7 +45,6 @@ The protocol defines three message types:
 | **pause** | Pause current loop | Next iteration waits for resume |
 | **resume** | Resume paused loop | Continues execution |
 | **cancel** | Cancel loop entirely | Emits ABORT event on `loop:current` |
-| **escalate** | Escalate to opus model | Switches implementor to more capable model |
 
 ## Message Schema
 
@@ -73,7 +72,7 @@ All messages on `loop:control` use schema version 0.
 | `schema` | integer | Yes | Must be `0` for control messages |
 | `type` | string | Yes | One of: `REQUEST`, `ACK`, `RESULT` |
 | `request_id` | string | Yes | UUID v4. Correlates ACK/RESULT to original REQUEST |
-| `command` | string | Yes | One of: `pause`, `resume`, `cancel`, `escalate` |
+| `command` | string | Yes | One of: `pause`, `resume`, `cancel` |
 | `target` | object | Yes | Identifies the target loop |
 | `target.run_id` | string | Yes | Unique ID of the loop run |
 | `target.issue_id` | string | No | Issue ID if applicable |
@@ -87,7 +86,6 @@ All messages on `loop:control` use schema version 0.
 | `pause` | `{}` (empty) |
 | `resume` | `{}` (empty) |
 | `cancel` | `{}` (empty) |
-| `escalate` | `{"model": "opus", "reason": "..."}` |
 
 ### RESULT Payload
 
@@ -239,77 +237,7 @@ User decides to stop a long-running grind session.
 }
 ```
 
-### Flow C: Escalate to Opus
-
-User notices the Haiku agent is stuck and upgrades to Opus.
-
-**1. Controller sends REQUEST (escalate)**
-```json
-{
-  "schema": 0,
-  "type": "REQUEST",
-  "request_id": "req-escalate-001",
-  "command": "escalate",
-  "target": {"run_id": "loop-1703123456-12345", "issue_id": "complex-refactor"},
-  "timestamp": "2024-12-28T12:00:00Z",
-  "payload": {
-    "model": "opus",
-    "reason": "Stuck on complex type inference"
-  }
-}
-```
-
-**2. Plugin sends ACK**
-```json
-{
-  "schema": 0,
-  "type": "ACK",
-  "request_id": "req-escalate-001",
-  "command": "escalate",
-  "target": {"run_id": "loop-1703123456-12345", "issue_id": "complex-refactor"},
-  "timestamp": "2024-12-28T12:00:01Z",
-  "payload": {}
-}
-```
-
-**3. Plugin sends RESULT**
-```json
-{
-  "schema": 0,
-  "type": "RESULT",
-  "request_id": "req-escalate-001",
-  "command": "escalate",
-  "target": {"run_id": "loop-1703123456-12345", "issue_id": "complex-refactor"},
-  "timestamp": "2024-12-28T12:00:02Z",
-  "payload": {
-    "status": "success",
-    "previous_model": "haiku",
-    "new_model": "opus"
-  }
-}
-```
-
-**4. Plugin emits STATE event on loop:current**
-```json
-{
-  "schema": 1,
-  "event": "STATE",
-  "run_id": "loop-1703123456-12345",
-  "updated_at": "2024-12-28T12:00:02Z",
-  "stack": [
-    {
-      "id": "loop-1703123456-12345",
-      "mode": "issue",
-      "iter": 5,
-      "max": 10,
-      "model": "opus",
-      "escalation_reason": "Stuck on complex type inference"
-    }
-  ]
-}
-```
-
-### Flow D: Already Completed (Race Condition)
+### Flow C: Already Completed (Race Condition)
 
 Controller sends a pause request for a run that has already finished.
 

@@ -23,7 +23,6 @@ This command:
 1. Creates a Git worktree for the issue (branch: `idle/issue/<id>`)
 2. Uses a **Stop hook** to intercept exit and force re-entry until resolved
 3. Stores loop state via jwz messaging (including worktree path)
-4. Delegates implementation to the `implementor` agent
 
 When called from `/grind`, this pushes a new frame onto the loop stack.
 
@@ -156,7 +155,7 @@ The stop hook injects worktree context on each iteration.
 ## Workflow
 
 1. Read the issue: `tissue show "$ISSUE_ID"`
-2. Delegate to implementor with worktree context
+2. Implement the fix in the worktree
 3. On failure: analyze, retry (stop hook re-injects)
 4. On success: output `<loop-done>COMPLETE</loop-done>`
 5. Land with `/land $ISSUE_ID` when ready

@@ -1,5 +1,5 @@
 {
-  "description": "idle plugin hooks - loops, safety, orchestration, and recovery",
+  "description": "idle plugin hooks - loops, safety, and recovery",
   "hooks": {
     "Stop": [
       {
@@ -13,7 +13,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
