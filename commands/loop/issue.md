@@ -93,6 +93,12 @@ else
     mkdir -p "$(dirname "$WORKTREE_PATH")"
     git worktree add -b "$BRANCH" "$WORKTREE_PATH" "$BASE_REF" 2>/dev/null || \
     git worktree add "$WORKTREE_PATH" "$BRANCH"  # Branch already exists
+
+    # Initialize submodules in worktree (if any exist)
+    if [[ -f "$REPO_ROOT/.gitmodules" ]]; then
+        echo "Initializing submodules in worktree..."
+        git -C "$WORKTREE_PATH" submodule update --init --recursive
+    fi
 fi
 
 # Create temp directory for prompt file

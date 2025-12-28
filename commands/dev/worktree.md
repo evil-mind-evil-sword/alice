@@ -162,6 +162,14 @@ Force remove and recreate:
 ```bash
 git worktree remove --force "$WORKTREE_PATH"
 git worktree add -b "$BRANCH" "$WORKTREE_PATH" main
+# Don't forget submodules!
+git -C "$WORKTREE_PATH" submodule update --init --recursive
+```
+
+### Submodules not initialized
+If worktree submodules are empty:
+```bash
+git -C "$WORKTREE_PATH" submodule update --init --recursive
 ```
 
 ### Clean up everything
