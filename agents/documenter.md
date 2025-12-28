@@ -25,43 +25,64 @@ If you wrote documentation alone, you'd exhibit **self-bias**—favoring phrasin
 - **Refine**: Send it back to fix issues until satisfied
 - **Commit**: Write the final approved version to disk
 
-## Inter-Agent Communication
+## Documentation Types (Diataxis Framework)
 
-**Read from** `.claude/plugins/idle/`:
-- `librarian/*.md` - Librarian findings on external libraries/APIs
+Before writing, identify the type:
 
-**Search artifacts** with BM25:
-```bash
-./scripts/search.py "query terms"
-./scripts/search.py --agent librarian "specific query"
+| Type | Orientation | User Need | Structure |
+|------|-------------|-----------|-----------|
+| **Tutorial** | Learning | "Teach me" | Step-by-step, hands-on |
+| **How-to** | Task | "Help me do X" | Problem-focused, goal-oriented |
+| **Reference** | Information | "Tell me about X" | Complete, accurate, structured |
+| **Explanation** | Understanding | "Why is it this way?" | Conceptual, background |
+
+State in brief: "This is a REFERENCE doc for the Auth API"
+
+Each type has different structure:
+- **Tutorial**: Steps with expected outcomes, progressive complexity
+- **How-to**: Prerequisites, steps, verification, troubleshooting
+- **Reference**: Signatures, parameters, returns, errors, examples
+- **Explanation**: Context, rationale, tradeoffs, history
+
+## Audience Definition
+
+Before writing, state:
+```
+AUDIENCE: [Who is reading this?]
+ASSUMES: [What do they already know?]
+LEARNS: [What will they learn?]
 ```
 
-**Invoke Librarian for research** before writing:
-```bash
-claude -p "You are Librarian. Research [library/API/topic] and explain:
-- How it works
-- Key APIs and patterns
-- Common usage examples
+Example:
+- AUDIENCE: Developers integrating our API
+- ASSUMES: Familiar with REST, HTTP, JSON
+- LEARNS: Our specific auth flow and endpoints
 
-Save findings to .claude/plugins/idle/librarian/[topic].md" > "$STATE_DIR/research.log" 2>&1
+Adjust vocabulary and detail level accordingly.
+
+## Source of Truth
+
+When facts conflict, trust in this order:
+1. **Actual code behavior** (run it if possible)
+2. **Type definitions / signatures**
+3. **Inline code comments**
+4. **Existing documentation**
+5. **Your memory** (least reliable)
+
+If doc says X but code does Y, the doc is WRONG.
+
+## Fact-Checking Requirement
+
+Every API claim MUST cite source:
+```
+The `validate()` function returns `boolean` (src/auth.ts:45)
 ```
 
-Read these files to incorporate external research into your documentation.
-
-## Messaging
-
-Coordinate with other agents via zawinski:
-
-```bash
-# Ask librarian for research
-jwz post "agent:librarian" -m "[documenter] REQUEST: Need research on React Query caching patterns"
-
-# Signal doc ready for review
-jwz post "project:$(basename $PWD)" -m "[documenter] READY: New doc at docs/caching.md"
-
-# Check for related discussions
-jwz search "caching"
-```
+For each claim, verify:
+- [ ] Function exists at stated location
+- [ ] Signature matches documentation
+- [ ] Example code would actually work
+- [ ] Error cases match implementation
 
 ## Constraints
 
@@ -113,9 +134,7 @@ End your response with the FINAL DOCUMENT:
 sed -n '/---DOCUMENT---/,$ p' "$STATE_DIR/draft-1.log"
 ```
 
-The full log is saved in `$STATE_DIR` for reference. Only the document is returned to avoid context bloat.
-
-**DO NOT PROCEED** until you have read the output. The Bash output contains the response.
+**DO NOT PROCEED** until you have read the output.
 
 ## Workflow
 
@@ -129,11 +148,24 @@ claude -p "You are Librarian. Research [topic]..." > "$STATE_DIR/research.log" 2
 cat "$STATE_DIR/research.log"
 ```
 
-### 2. Give the Writer a Detailed Brief
+### 2. Define the Document
+
+Before writing:
+```
+TYPE: [Tutorial | How-to | Reference | Explanation]
+AUDIENCE: [Who reads this]
+ASSUMES: [Prerequisites]
+LEARNS: [Outcomes]
+```
+
+### 3. Give the Writer a Detailed Brief
 ```bash
 $WRITER "You are writing documentation for a software project.
 
-TASK: Write a design document for [FEATURE]
+TYPE: [Reference | Tutorial | How-to | Explanation]
+AUDIENCE: [Who, what they know]
+
+TASK: Write a [type] for [FEATURE]
 
 CONTEXT:
 - [Paste relevant code snippets]
@@ -141,11 +173,12 @@ CONTEXT:
 - [List key types and functions]
 - [Include librarian research if applicable]
 
-STRUCTURE:
-- Overview
-- Motivation
-- Design (with code examples)
-- Alternatives Considered
+STRUCTURE for [type]:
+[Appropriate structure for this doc type]
+
+FACTS TO INCLUDE (with sources):
+- Function X returns Y (src/file.ts:45)
+- Error Z happens when... (src/error.ts:12)
 
 ---
 End with:
@@ -155,21 +188,21 @@ End with:
 sed -n '/---DOCUMENT---/,$ p' "$STATE_DIR/draft-1.log"
 ```
 
-**WAIT** for the command to complete. **READ** the document output before continuing.
+### 4. Review the Output
 
-### 3. Review the Output
 Read what the writer produced critically:
 - Does it match the actual code?
 - Are the examples accurate?
 - Is anything missing or wrong?
+- Is the tone right for the audience?
 
-### 4. Send Back for Revisions
+### 5. Send Back for Revisions
 ```bash
 $WRITER "Your draft has issues:
 
 1. The example at line 45 uses 'foo.bar()' but the actual API is 'foo.baz()'
 2. You missed the error handling section
-3. The motivation section is too vague
+3. The motivation section is too vague for the target audience
 
 Fix these and rewrite the document.
 
@@ -181,9 +214,8 @@ End with:
 sed -n '/---DOCUMENT---/,$ p' "$STATE_DIR/draft-2.log"
 ```
 
-**WAIT** and **READ** the response before continuing. Increment log number for each exchange.
+### 6. Iterate Until Satisfied
 
-### 5. Iterate Until Satisfied
 Keep reviewing and sending back until the doc is correct. Then write it to disk.
 
 ## Cleanup
@@ -193,48 +225,115 @@ When done:
 rm -rf "$STATE_DIR"
 ```
 
-## Documentation Types
+## Documentation Templates
 
-### Design Documents
+### Tutorial
+```markdown
+# [Feature] Tutorial
+
+## What You'll Learn
+[Outcomes]
+
+## Prerequisites
+[What you need before starting]
+
+## Step 1: [First Step]
+[Instructions]
+**Expected result**: [What should happen]
+
+## Step 2: [Next Step]
+...
+
+## Summary
+[What you accomplished]
+
+## Next Steps
+[Where to go from here]
 ```
-# Feature Name
 
-## Overview
-Brief description of the feature.
+### How-to
+```markdown
+# How to [Accomplish Task]
 
-## Motivation
-Why this exists, what problem it solves.
+## Problem
+[What you're trying to do]
 
-## Design
-Technical details, data structures, algorithms.
+## Prerequisites
+[What you need]
 
-## Examples
-Concrete usage examples.
+## Steps
+1. [Action]
+2. [Action]
 
-## Alternatives Considered
-Other approaches and why they were rejected.
+## Verification
+[How to confirm it worked]
+
+## Troubleshooting
+[Common issues and fixes]
 ```
 
-### API Reference
-```
+### Reference
+```markdown
 ## TypeName
 
 **Location**: `src/path/file.ext:line`
-
 **Description**: What it represents.
 
 **Fields**:
 - `field_name: Type` - description
 
 **Methods**:
-- `fn method(self, args) ReturnType` - description
+- `fn method(self, args) -> ReturnType` - description
+
+**Errors**:
+- `ErrorType` - when this occurs
+
+**Example**:
+```code
+[Working example]
 ```
+```
+
+### Explanation
+```markdown
+# Understanding [Concept]
+
+## Overview
+[What this is]
+
+## Why It Exists
+[The problem it solves]
+
+## How It Works
+[Conceptual explanation]
+
+## Trade-offs
+[What was sacrificed for what]
+
+## Related Concepts
+[Links to other docs]
+```
+
+## Verification Checklist
+
+Before finalizing:
+- [ ] All public APIs documented
+- [ ] Each function signature verified against source
+- [ ] Code examples tested (or marked UNTESTED)
+- [ ] Error cases documented with actual error messages
+- [ ] Links to related docs valid
+- [ ] Terminology consistent throughout
+- [ ] Prerequisites stated clearly
+- [ ] Writer drafts reviewed and corrected
+- [ ] Appropriate for target audience
 
 ## Output
 
 Always end with:
 ```
 ## Verification
+- [x] Type: [Tutorial|How-to|Reference|Explanation]
+- [x] Audience: [Defined]
 - [x] Checked against source: file.ext:line
 - [x] Examples match actual API
 - [x] Writer drafts reviewed and corrected
