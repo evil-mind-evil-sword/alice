@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2025-12-27
+
+### Fixed
+
+- Shell scripting robustness across all hook and command scripts:
+  - `grep -qF --` for fixed-string matching with option-terminator protection
+  - Complete dirty checks (staged + unstaged) in worktree status/remove/land
+  - JSON injection fix in grind.md using `jq -Rs` to escape filter arguments
+  - Pipeline fallback fixes in issue.md (sequential conditionals instead of broken `||`)
+  - `printf` instead of `echo` in stop-hook.sh for safe handling of arbitrary data
+
 ## [0.6.0] - 2025-12-27
 
 ### Added
