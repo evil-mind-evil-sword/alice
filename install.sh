@@ -115,17 +115,10 @@ check_optional_deps() {
     printf "\n"
 
     if check_command codex; then
-        success "codex found - oracle/reviewer will use OpenAI for diverse perspectives"
+        success "codex found - alice will use OpenAI for diverse perspectives"
     else
-        info "codex not found - agents will use Claude for second opinions"
+        info "codex not found - alice will use Claude for second opinions"
         printf "    To enable OpenAI diversity: npm install -g @openai/codex\n"
-    fi
-
-    if check_command gemini; then
-        success "gemini found - documenter will use Gemini for writing"
-    else
-        info "gemini not found - documenter will use Claude for writing"
-        printf "    To enable Gemini diversity: npm install -g @google/gemini-cli\n"
     fi
 }
 

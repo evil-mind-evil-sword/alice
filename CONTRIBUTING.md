@@ -20,9 +20,13 @@ Thank you for your interest in contributing to idle!
    claude --plugin-dir .
    ```
 
-4. Test that agents and commands are available:
+4. Test that agents are available:
    ```shell
-   /idle:dev:plan What should I work on?
+   # Test alice (deep reasoning)
+   "I need help with a design decision"
+
+   # Test bob (research)
+   "How does React Query handle cache invalidation?"
    ```
 
 ## Adding a New Agent
@@ -50,35 +54,33 @@ Thank you for your interest in contributing to idle!
 
 4. The agent becomes available as `idle:your-agent`
 
-See `agents/explorer.md` for a simple example or `agents/oracle.md` for a complex one.
+See `agents/bob.md` for a simple example or `agents/alice.md` for a complex one.
 
-## Adding a New Command
+## Adding a New Skill
 
-1. Create a new file in `commands/<category>/`:
+1. Create a new directory in `skills/`:
    ```
-   commands/dev/your-command.md
-   commands/loop/your-command.md
+   skills/your-skill/SKILL.md
    ```
 
 2. Add YAML frontmatter:
    ```yaml
    ---
-   description: What the command does
+   name: your-skill
+   description: What the skill does (third person voice)
    ---
    ```
 
-3. Write the command specification:
-   - **Usage**: How to invoke
+3. Write the skill specification:
+   - **When to Use**: Trigger conditions
    - **Workflow**: Step-by-step execution
-   - **Output**: Completion signals (for loop commands)
+   - **Output**: Expected artifacts or results
 
-4. The command becomes available as `/idle:<category>:your-command`
-
-See `skills/fmt/SKILL.md` for a simple skill example or `commands/loop.md` for the main loop command.
+See `skills/messaging/SKILL.md` for a tool documentation skill or `skills/researching/SKILL.md` for a composition skill.
 
 ## Code Style
 
-- Agent/command files are Markdown with YAML frontmatter
+- Agent/command/skill files are Markdown with YAML frontmatter
 - Use clear, imperative language in instructions
 - Be explicit about constraints (what the agent MUST NOT do)
 - Include concrete examples in workflows
@@ -104,9 +106,9 @@ Agents communicate via zawinski messaging (`jwz` CLI):
 [agent] ACTION: description
 
 Examples:
-[oracle] STARTED: Analyzing auth feature
-[oracle] FINDING: Race condition in handler.go:45
-[reviewer] BLOCKING: Security issue in token validation
+[alice] ANALYSIS: Auth flow race condition
+[alice] DECISION: Use JWT with refresh tokens
+[bob] RESEARCH: OAuth 2.0 best practices
 ```
 
 ## Testing
@@ -114,7 +116,7 @@ Examples:
 idle doesn't have automated tests. Manual testing workflow:
 
 1. Load the plugin with `claude --plugin-dir`
-2. Invoke your agent/command
+2. Invoke your agent/skill
 3. Verify it behaves as documented
 4. Test edge cases (missing dependencies, errors)
 
@@ -122,7 +124,7 @@ idle doesn't have automated tests. Manual testing workflow:
 
 1. Fork the repository
 2. Create a branch for your change
-3. Add/modify agents or commands
+3. Add/modify agents or skills
 4. Test manually
 5. Submit a PR with:
    - Clear description of what you added/changed

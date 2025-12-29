@@ -4,6 +4,6 @@
 
 # Output agent awareness (2-4 lines only)
 cat <<'EOF'
-idle agents: idle:reviewer (validate changes), idle:oracle (hard decisions), idle:explorer (codebase search)
-Workflow: After code changes -> run /review; When stuck on design -> consult idle:oracle
+idle agents: idle:alice (deep reasoning, quality gates), idle:bob (external research)
+Workflow: When stuck on design -> consult idle:alice; For research -> idle:bob
 EOF

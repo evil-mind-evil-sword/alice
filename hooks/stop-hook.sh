@@ -680,7 +680,7 @@ STATUS: Changes reviewed (LGTM). Ready to complete."
     # Add agent awareness
     PHASE_CONTEXT="$PHASE_CONTEXT
 
-AGENTS: If stuck on a design decision, consult idle:oracle. After changes, use /review."
+AGENTS: If stuck on a design decision, consult idle:alice. For external research, use idle:bob."
 fi
 
 # Build continuation message

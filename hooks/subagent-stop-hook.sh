@@ -1,5 +1,5 @@
 #!/bin/bash
-# idle SubagentStop hook - enforce second opinion for reviewer agent
+# idle SubagentStop hook - enforce second opinion for alice agent
 #
 # Exit codes:
 #   0 - Allow completion
@@ -26,10 +26,10 @@ if [[ -z "$TRANSCRIPT_PATH" ]] || [[ ! -f "$TRANSCRIPT_PATH" ]]; then
     exit 0
 fi
 
-# Helper to check if this is a reviewer agent
-is_reviewer_agent() {
-    # Look for reviewer-specific output patterns in the last assistant message
-    # The reviewer MUST output "## Result" with "LGTM" or "CHANGES_REQUESTED"
+# Helper to check if this is alice (deep reasoning agent)
+is_alice_agent() {
+    # Look for alice-specific output patterns in the last assistant message
+    # alice MUST output "## Result" with status and confidence
     local last_text
     # NDJSON parsing: split by newlines, parse each line, filter for assistant messages
     last_text=$(jq -r -Rs '
@@ -38,17 +38,24 @@ is_reviewer_agent() {
         select(.type == "text") | .text
     ' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1 || echo "")
 
-    # Check for reviewer output format markers (use word boundaries to avoid code block false positives)
-    if echo "$last_text" | grep -qF '**Status**: LGTM' || echo "$last_text" | grep -qF '**Status**: CHANGES_REQUESTED'; then
-        return 0  # Is reviewer
+    # Check for alice's output format markers
+    if echo "$last_text" | grep -qF '**Status**: RESOLVED' || \
+       echo "$last_text" | grep -qF '**Status**: NEEDS_INPUT' || \
+       echo "$last_text" | grep -qF '**Status**: UNRESOLVED'; then
+        return 0  # Is alice
     fi
 
-    # Also check for reviewer's structured sections (require markdown header format)
-    if echo "$last_text" | grep -qF '## Issues' && echo "$last_text" | grep -qF '## Praise'; then
-        return 0  # Is reviewer
+    # Also check for alice's structured sections
+    if echo "$last_text" | grep -qF '## Hypotheses' && echo "$last_text" | grep -qF '## Recommendation'; then
+        return 0  # Is alice
     fi
 
-    return 1  # Not reviewer
+    # Check for quality gate mode (reviewing bob's work)
+    if echo "$last_text" | grep -qF 'Verdict: PASS' || echo "$last_text" | grep -qF 'Verdict: REVISE'; then
+        return 0  # Is alice in quality gate mode
+    fi
+
+    return 1  # Not alice
 }
 
 # Helper to check if second opinion was obtained
@@ -82,7 +89,6 @@ has_second_opinion() {
     # Strategy 3: Check that second opinion section has content (not just placeholder)
     local opinion_content
     # Extract section content (between ## Second Opinion and next ## or end)
-    # Use awk for cleaner section extraction
     opinion_content=$(echo "$last_text" | awk '/^## Second Opinion/{found=1; next} /^## /{found=0} found' | head -20)
 
     if [[ -z "$opinion_content" ]] || echo "$opinion_content" | grep -qiE '^\s*(TODO|TBD|pending|not yet)'; then
@@ -92,45 +98,47 @@ has_second_opinion() {
     return 0  # Has valid second opinion
 }
 
-# Only enforce for reviewer agent
-if ! is_reviewer_agent; then
+# Only enforce for alice agent
+if ! is_alice_agent; then
     exit 0
 fi
 
 # Check if second opinion was obtained
 if ! has_second_opinion; then
     cat >&2 << 'EOF'
-[SUBAGENT GATE] Review incomplete - second opinion required.
+[SUBAGENT GATE] Analysis incomplete - second opinion required.
 
-You MUST consult another model before completing the review:
+You MUST consult another model before completing the analysis:
 
 1. Run the second opinion command:
    ```bash
-   $SECOND_OPINION "You are reviewing code changes.
+   $SECOND_OPINION "You are helping debug/design a software project.
 
-   INTENT: [What the change is trying to accomplish]
+   Problem: [DESCRIBE THE PROBLEM]
 
-   Diff to review:
-   $(git diff)
-   $(git diff --cached)
+   My hypotheses (ranked):
+   1. [Most likely]
+   2. [Alternative]
 
-   Review for: correctness, security, tests, style
+   Relevant code: [PASTE KEY SNIPPETS]
+
+   Do you agree? What would you add?
 
    ---
    End with:
    ---SUMMARY---
-   [List each issue: type - file:line - description]
+   [Your final analysis]
    " > "$STATE_DIR/opinion-1.log" 2>&1
    sed -n '/---SUMMARY---/,$ p' "$STATE_DIR/opinion-1.log"
    ```
 
 2. Read and integrate their findings into your ## Second Opinion section
 
-3. Reconcile any disagreements in ## Disputed section
+3. Reconcile any disagreements
 
-4. Then emit your final verdict
+4. Then emit your final recommendation
 
-DO NOT skip the second opinion - single-model reviews miss bugs.
+DO NOT skip the second opinion - single-model analysis has blind spots.
 EOF
     exit 2
 fi
