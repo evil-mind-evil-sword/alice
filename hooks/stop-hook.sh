@@ -248,8 +248,143 @@ if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
     esac
 fi
 
-# If completion signal found, clean up and allow exit
+# If completion signal found, verify review requirements before allowing exit
 if [[ "$COMPLETION_FOUND" == "true" ]]; then
+    # REVIEW GATE: For issue/grind with COMPLETE, verify review was done
+    # NOTE: Review gate only applies when using jwz (worktrees require jwz)
+    REVIEW_REQUIRED=false
+    REVIEW_PASSED=true
+    REVIEW_ESCALATE=false
+
+    if [[ "$USE_JWZ" == "true" ]] && [[ "$COMPLETION_REASON" == "COMPLETE" ]] && [[ -n "$WORKTREE_PATH" ]] && [[ -d "$WORKTREE_PATH" ]]; then
+        REVIEW_REQUIRED=true
+
+        # Re-read state with lock to avoid race conditions
+        if acquire_lock; then
+            STATE=$(jwz read "loop:current" 2>/dev/null | tail -1 || true)
+            TOP=$(echo "$STATE" | jq -r '.stack[-1]')
+            release_lock
+        fi
+
+        # Get review tracking state from fresh TOP
+        LAST_REVIEWED_SHA=$(echo "$TOP" | jq -r '.last_reviewed_sha // empty')
+        REVIEW_ITER=$(echo "$TOP" | jq -r '.review_iter // 0')
+        LAST_REVIEW_STATUS=$(echo "$TOP" | jq -r '.last_review_status // empty')
+
+        # Validate REVIEW_ITER is numeric
+        if ! [[ "$REVIEW_ITER" =~ ^[0-9]+$ ]]; then
+            REVIEW_ITER=0
+        fi
+
+        # Get current HEAD (handle failure gracefully)
+        CURRENT_SHA=$(git -C "$WORKTREE_PATH" rev-parse HEAD 2>/dev/null || echo "")
+        if [[ -z "$CURRENT_SHA" ]]; then
+            REVIEW_PASSED=false
+            REVIEW_BLOCK_REASON="Cannot determine HEAD in worktree. Check worktree state."
+        fi
+
+        # Check for uncommitted changes
+        HAS_CHANGES=false
+        if ! git -C "$WORKTREE_PATH" diff --quiet 2>/dev/null || \
+           ! git -C "$WORKTREE_PATH" diff --cached --quiet 2>/dev/null; then
+            HAS_CHANGES=true
+        fi
+
+        # Determine if review gate passes (explicit LGTM required)
+        if [[ -n "$CURRENT_SHA" ]]; then
+            if [[ "$HAS_CHANGES" == "true" ]]; then
+                # Uncommitted changes = cannot complete
+                REVIEW_PASSED=false
+                REVIEW_BLOCK_REASON="Uncommitted changes exist. Commit and run /review before completing."
+            elif [[ -z "$LAST_REVIEWED_SHA" ]]; then
+                # Never reviewed = cannot complete
+                REVIEW_PASSED=false
+                REVIEW_BLOCK_REASON="Code has not been reviewed. Run /review before completing."
+            elif [[ "$CURRENT_SHA" != "$LAST_REVIEWED_SHA" ]]; then
+                # Commits after review = cannot complete
+                REVIEW_PASSED=false
+                REVIEW_BLOCK_REASON="Commits made after last review. Run /review before completing."
+            elif [[ "$LAST_REVIEW_STATUS" != "LGTM" ]]; then
+                # Require explicit LGTM (not just absence of CHANGES_REQUESTED)
+                if [[ "$LAST_REVIEW_STATUS" == "CHANGES_REQUESTED" ]]; then
+                    if [[ "$REVIEW_ITER" -ge 3 ]]; then
+                        # Max review iterations reached - allow completion but require follow-up issues
+                        REVIEW_PASSED=true
+                        REVIEW_ESCALATE=true
+                    else
+                        REVIEW_PASSED=false
+                        REVIEW_BLOCK_REASON="Last review requested changes. Address feedback and run /review again. (Review iteration $REVIEW_ITER/3)"
+                    fi
+                else
+                    # Unknown or empty status - require explicit LGTM
+                    REVIEW_PASSED=false
+                    REVIEW_BLOCK_REASON="Review status unclear (got: '$LAST_REVIEW_STATUS'). Run /review to get explicit LGTM."
+                fi
+            fi
+            # If none of the above triggered, REVIEW_PASSED remains true (LGTM at current SHA)
+        fi
+    fi
+
+    # Check for escalation (review limit exceeded, must create follow-up issues)
+    if [[ "${REVIEW_ESCALATE:-false}" == "true" ]]; then
+        emit_trace_event "REVIEW_ESCALATE" "{\"review_iter\":$REVIEW_ITER}"
+        # Allow completion but inject guidance about follow-up issues
+        # The grind.md documentation specifies creating issues tagged review-followup
+    fi
+
+    # If review gate fails, reject completion and continue loop
+    if [[ "$REVIEW_REQUIRED" == "true" ]] && [[ "$REVIEW_PASSED" != "true" ]]; then
+        # Escape reason for JSON trace event using jq's @json for proper escaping
+        ESCAPED_BLOCK_REASON=$(printf '%s' "$REVIEW_BLOCK_REASON" | jq -Rs '@json')
+        emit_trace_event "REVIEW_GATE_BLOCKED" "{\"reason\":$ESCAPED_BLOCK_REASON}"
+
+        # Continue the loop instead of allowing exit
+        NEW_ITERATION=$((ITERATION + 1))
+        NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        if [[ "$USE_JWZ" == "true" ]]; then
+            if acquire_lock; then
+                NEW_STACK=$(echo "$STATE" | jq --argjson iter "$NEW_ITERATION" '.stack[-1].iter = $iter')
+                jwz post "loop:current" -m "{\"schema\":1,\"event\":\"STATE\",\"run_id\":\"$RUN_ID\",\"updated_at\":\"$NOW\",\"stack\":$(echo "$NEW_STACK" | jq -c '.stack')}"
+                release_lock
+            fi
+        else
+            # Fallback path: update state file iteration
+            TEMP_FILE=$(mktemp)
+            sed "s/^iteration: .*/iteration: $NEW_ITERATION/" "$STATE_FILE" > "$TEMP_FILE"
+            mv "$TEMP_FILE" "$STATE_FILE"
+        fi
+
+        # Build rejection message with inline worktree context
+        GATE_WORKTREE_CTX=""
+        if [[ -n "$WORKTREE_PATH" ]]; then
+            GATE_WORKTREE_CTX="
+
+WORKTREE: $WORKTREE_PATH
+BRANCH: $BRANCH
+ISSUE: $ISSUE_ID"
+        fi
+
+        REASON="[REVIEW GATE] Completion rejected. $REVIEW_BLOCK_REASON
+
+ITERATION $NEW_ITERATION/$MAX_ITERATIONS - You must complete review before marking done.
+
+Workflow:
+1. Commit all changes
+2. Run /review
+3. If CHANGES_REQUESTED: fix issues, commit, run /review again
+4. When LGTM: then emit completion signal$GATE_WORKTREE_CTX"
+
+        ESCAPED_REASON=$(printf '%s' "$REASON" | jq -Rs '.')
+        cat <<EOF
+{
+  "decision": "block",
+  "reason": $ESCAPED_REASON
+}
+EOF
+        exit 2
+    fi
+
     emit_trace_event "COMPLETION" "{\"reason\":\"$COMPLETION_REASON\"}"
     if [[ "$USE_JWZ" == "true" ]]; then
         # Acquire lock before modifying state

@@ -142,11 +142,18 @@ If `/issue` returns STUCK or MAX_ITERATIONS:
 
 For each issue in the grind session, you MUST:
 
-1. **Run `/review`** after implementation (step 4 in workflow)
-2. **Address CHANGES_REQUESTED** feedback (max 3 review iterations)
-3. **If review limit exceeded**: Create follow-up issue with `review-followup` tag
+1. **Commit all changes**: No uncommitted changes allowed
+2. **Run `/review`**: Code must be reviewed before completion
+3. **Address feedback**: If CHANGES_REQUESTED, fix and re-run `/review` (max 3 iterations)
+4. **If review limit exceeded**: Create follow-up issue with `review-followup` tag
 
-The stop hook reminds you of review requirements. Do not emit `<issue-complete>DONE</issue-complete>` until reviewed.
+**ENFORCEMENT**: The stop hook will **reject** `<issue-complete>DONE</issue-complete>` if:
+- Uncommitted changes exist
+- Code has never been reviewed
+- Commits were made after the last review
+- Last review returned CHANGES_REQUESTED (unless at review iteration limit)
+
+You will be forced to continue iterating until review requirements are met.
 
 **When stuck on design decisions**: Consult `idle:oracle` before making architectural choices.
 

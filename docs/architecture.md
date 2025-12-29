@@ -395,6 +395,19 @@ Before context compaction, persists current task state to `loop:anchor` topic:
 
 Emits single line: `"IDLE: Recovery anchor saved. After compaction: jwz read loop:anchor"`
 
+### SubagentStop (Second Opinion Enforcement)
+
+Ensures reviewer agent obtains second opinion before completing:
+
+**Detection**: Identifies reviewer by output patterns (`**Status**: LGTM | CHANGES_REQUESTED`)
+
+**Enforcement** (exit code 2 = block):
+- Must invoke `codex exec` or `claude -p` for second opinion
+- Must include `## Second Opinion` section with actual findings
+- Must not have placeholder content
+
+**Rationale**: Single-model reviews exhibit self-bias. The hook enforces the multi-model consensus requirement documented in `agents/reviewer.md`.
+
 ### Hooks We Don't Use
 
 | Hook | Why Silent |
@@ -402,7 +415,6 @@ Emits single line: `"IDLE: Recovery anchor saved. After compaction: jwz read loo
 | SessionStart | Claude pulls state on-demand |
 | UserPromptSubmit | Belongs in commands, not hooks |
 | PostToolUse | Updates go to jwz quietly |
-| SubagentStop | Agents produce structured summaries |
 
 ## External Model Integration
 

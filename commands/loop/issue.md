@@ -182,11 +182,18 @@ jwz post "issue:$ISSUE_ID" -m "[issue] COMPLETE: Ready to land"
 
 Before emitting a completion signal, you MUST:
 
-1. **If files were changed**: Run `/review` and address feedback
-2. **If `/review` returns CHANGES_REQUESTED**: Fix issues, re-run `/review` (max 3 iterations)
-3. **If skipping review**: State the reason explicitly (e.g., "documentation-only change")
+1. **Commit all changes**: No uncommitted changes allowed
+2. **Run `/review`**: Code must be reviewed before completion
+3. **Address feedback**: If CHANGES_REQUESTED, fix and re-run `/review` (max 3 iterations)
+4. **If review limit exceeded**: Create follow-up issues tagged `review-followup`
 
-The stop hook tracks review state. If you try to complete without review, you'll be reminded.
+**ENFORCEMENT**: The stop hook will **reject** `<loop-done>COMPLETE</loop-done>` if:
+- Uncommitted changes exist
+- Code has never been reviewed
+- Commits were made after the last review
+- Last review returned CHANGES_REQUESTED (unless at review iteration limit)
+
+You will be forced to continue iterating until review requirements are met.
 
 **When stuck on design decisions**: Consult `idle:oracle` before making architectural choices.
 
