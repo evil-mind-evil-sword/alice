@@ -126,6 +126,64 @@ install_bibval() {
     fi
 }
 
+install_idle_binary() {
+    # Determine plugin location
+    PLUGIN_ROOT="${HOME}/.claude/plugins/cache/emes/idle"
+
+    # Find the latest version directory
+    if [ -d "$PLUGIN_ROOT" ]; then
+        LATEST_VERSION=$(ls -1 "$PLUGIN_ROOT" 2>/dev/null | sort -V | tail -1)
+        if [ -n "$LATEST_VERSION" ]; then
+            BIN_DIR="${PLUGIN_ROOT}/${LATEST_VERSION}/bin"
+        else
+            info "Plugin not yet installed, will install binary after plugin setup"
+            return
+        fi
+    else
+        info "Plugin not yet installed, will install binary after plugin setup"
+        return
+    fi
+
+    # Check if binary already exists
+    if [ -x "${BIN_DIR}/idle" ]; then
+        success "idle binary already installed"
+        return
+    fi
+
+    info "Installing idle binary..."
+    mkdir -p "$BIN_DIR"
+
+    # Determine platform
+    case "$(uname -s)" in
+        Darwin*)
+            case "$(uname -m)" in
+                arm64) ARTIFACT="idle-macos-aarch64" ;;
+                x86_64) ARTIFACT="idle-macos-x86_64" ;;
+                *) warn "Unsupported architecture: $(uname -m)"; return ;;
+            esac
+            ;;
+        Linux*)
+            case "$(uname -m)" in
+                x86_64) ARTIFACT="idle-linux-x86_64" ;;
+                *) warn "Unsupported architecture: $(uname -m)"; return ;;
+            esac
+            ;;
+        *)
+            warn "Unsupported OS: $(uname -s)"
+            return
+            ;;
+    esac
+
+    # Download binary
+    DOWNLOAD_URL="https://github.com/evil-mind-evil-sword/idle/releases/latest/download/${ARTIFACT}"
+    if curl -fsSL "$DOWNLOAD_URL" -o "${BIN_DIR}/idle"; then
+        chmod +x "${BIN_DIR}/idle"
+        success "idle binary installed to ${BIN_DIR}/idle"
+    else
+        warn "Failed to download idle binary. Hooks will use bash fallback."
+    fi
+}
+
 check_optional_deps() {
     printf "\n"
     info "Checking optional dependencies for enhanced multi-model support..."
@@ -200,6 +258,9 @@ main() {
                 printf "  ${GREEN}/plugin install idle@emes${NC}\n"
             fi
         fi
+
+        # Install the idle binary to the plugin directory
+        install_idle_binary
     else
         warn "claude CLI not found. Install the plugin manually in Claude Code:"
         printf "\n"

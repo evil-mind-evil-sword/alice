@@ -1,5 +1,6 @@
 const std = @import("std");
 const idle = @import("idle");
+const zawinski = @import("zawinski");
 const extractJsonString = idle.event_parser.extractString;
 
 /// Stop hook - core loop mechanism
@@ -13,10 +14,16 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
 
     // Extract fields
     const transcript_path = extractJsonString(input_json, "\"transcript_path\"");
+    const session_id = extractJsonString(input_json, "\"session_id\"");
     const cwd = extractJsonString(input_json, "\"cwd\"") orelse ".";
 
     // Change to project directory
     std.posix.chdir(cwd) catch {};
+
+    // Sync transcript to zawinski (always, regardless of loop state)
+    if (transcript_path != null and session_id != null) {
+        syncTranscript(allocator, transcript_path.?, session_id.?, cwd);
+    }
 
     // Check file-based escape hatch
     if (std.fs.cwd().access(".idle-disabled", .{})) |_| {
@@ -74,8 +81,20 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     // Handle result
     switch (result.decision) {
         .allow_exit => {
-            // Post completion state if needed
+            // Auto-land for issue mode with COMPLETE
             if (result.completion_reason) |reason| {
+                if (reason == .COMPLETE and frame.mode == .issue) {
+                    if (frame.worktree_path) |wt_path| {
+                        if (frame.branch) |branch| {
+                            if (frame.issue_id) |issue_id| {
+                                const base_ref = frame.base_ref orelse "main";
+                                _ = idle.autoland.autoLand(allocator, issue_id, wt_path, branch, base_ref);
+                            }
+                        }
+                    }
+                }
+
+                // Post completion state
                 const reason_str = @tagName(reason);
                 var done_buf: [256]u8 = undefined;
                 const done_json = std.fmt.bufPrint(&done_buf,
@@ -168,51 +187,75 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     }
 }
 
-/// Read loop state from jwz (shells out for now)
+/// Read loop state from zawinski store directly
 fn readJwzState(allocator: std.mem.Allocator) !?[]u8 {
-    var child = std.process.Child.init(&.{ "sh", "-c", "jwz read loop:current 2>/dev/null | tail -1" }, allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Ignore;
+    // Discover and open the store
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return null;
+    defer allocator.free(store_dir);
 
-    try child.spawn();
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return null;
+    defer store.deinit();
 
-    if (child.stdout) |stdout| {
-        var buf: [65536]u8 = undefined;
-        const n_read = try stdout.readAll(&buf);
-        _ = try child.wait();
-
-        if (n_read == 0) return null;
-
-        const result = try allocator.alloc(u8, n_read);
-        @memcpy(result, buf[0..n_read]);
-        return result;
+    // Get the latest message from loop:current topic (limit 1, ordered by created_at DESC)
+    const messages = store.listMessages("loop:current", 1) catch return null;
+    defer {
+        for (messages) |*m| {
+            var msg = m.*;
+            msg.deinit(allocator);
+        }
+        allocator.free(messages);
     }
 
-    _ = try child.wait();
-    return null;
+    if (messages.len == 0) return null;
+
+    // Return a copy of the body
+    const body = try allocator.dupe(u8, messages[0].body);
+    return body;
 }
 
-/// Post message to jwz (shells out for now)
+/// Sync Claude transcript to zawinski store
+fn syncTranscript(allocator: std.mem.Allocator, transcript_path: []const u8, session_id: []const u8, project_path: []const u8) void {
+    // Discover and open the store
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return;
+    defer allocator.free(store_dir);
+
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return;
+    defer store.deinit();
+
+    // Sync transcript entries to SQLite
+    _ = store.syncTranscript(transcript_path, session_id, project_path) catch return;
+}
+
+/// Post message to zawinski store directly
 fn postJwzMessage(allocator: std.mem.Allocator, topic: []const u8, message: []const u8) !void {
-    // Write message to temp file with thread ID to avoid race conditions
-    var path_buf: [64]u8 = undefined;
-    const tid = std.Thread.getCurrentId();
-    const ts = std.time.timestamp();
-    const tmp_path = std.fmt.bufPrint(&path_buf, "/tmp/idle-{d}-{d}.json", .{ tid, ts }) catch "/tmp/idle.json";
+    // Discover and open the store
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return error.StoreNotFound;
+    defer allocator.free(store_dir);
 
-    const file = try std.fs.createFileAbsolute(tmp_path, .{});
-    defer file.close();
-    defer std.fs.deleteFileAbsolute(tmp_path) catch {};
-    try file.writeAll(message);
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return error.StoreOpenFailed;
+    defer store.deinit();
 
-    var cmd_buf: [512]u8 = undefined;
-    const cmd = try std.fmt.bufPrint(&cmd_buf, "jwz post {s} -f {s} 2>/dev/null", .{ topic, tmp_path });
+    // Ensure topic exists (create if needed)
+    _ = store.fetchTopic(topic) catch |err| {
+        if (err == zawinski.store.StoreError.TopicNotFound) {
+            const topic_id = store.createTopic(topic, "") catch return error.TopicCreateFailed;
+            allocator.free(topic_id);
+        } else {
+            return error.TopicFetchFailed;
+        }
+    };
 
-    var child = std.process.Child.init(&.{ "sh", "-c", cmd }, allocator);
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Ignore;
-    try child.spawn();
-    _ = try child.wait();
+    // Create sender identity
+    const sender = zawinski.store.Sender{
+        .id = "idle",
+        .name = "idle",
+        .model = null,
+        .role = "loop",
+    };
+
+    // Post the message
+    const msg_id = try store.createMessage(topic, null, message, .{ .sender = sender });
+    allocator.free(msg_id);
 }
 
 /// Format Unix timestamp as ISO 8601

@@ -6,7 +6,7 @@
     .dependencies = .{
         .zawinski = .{
             .url = "git+https://github.com/evil-mind-evil-sword/zawinski.git#main",
-            .hash = "zawinski-0.1.0-cOuYlI0ZlgBwNsmcZ2h4xOtMAQ1FMsIBiWqKgdBXkwVr",
+            .hash = "zawinski-0.1.0-cOuYlBtJlgAFMjUNCiu7PU1A1qawC_BAE1yG_vJsdGmU",
         },
         .tissue = .{
             .url = "git+https://github.com/evil-mind-evil-sword/tissue.git#main",

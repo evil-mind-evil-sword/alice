@@ -1,5 +1,6 @@
 const std = @import("std");
 const idle = @import("idle");
+const zawinski = @import("zawinski");
 const extractJsonString = idle.event_parser.extractString;
 
 /// PreCompact hook - persist recovery anchor before context compaction
@@ -69,50 +70,53 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     return 0;
 }
 
-/// Read loop state from jwz
+/// Read loop state from zawinski store directly
 fn readJwzState(allocator: std.mem.Allocator) !?[]u8 {
-    var child = std.process.Child.init(&.{ "sh", "-c", "jwz read loop:current 2>/dev/null | tail -1" }, allocator);
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Ignore;
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return null;
+    defer allocator.free(store_dir);
 
-    try child.spawn();
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return null;
+    defer store.deinit();
 
-    if (child.stdout) |stdout| {
-        var read_buf: [65536]u8 = undefined;
-        const n_read = try stdout.readAll(&read_buf);
-        _ = try child.wait();
-
-        if (n_read == 0) return null;
-
-        const result = try allocator.alloc(u8, n_read);
-        @memcpy(result, read_buf[0..n_read]);
-        return result;
+    const messages = store.listMessages("loop:current", 1) catch return null;
+    defer {
+        for (messages) |*m| {
+            var msg = m.*;
+            msg.deinit(allocator);
+        }
+        allocator.free(messages);
     }
 
-    _ = try child.wait();
-    return null;
+    if (messages.len == 0) return null;
+    return try allocator.dupe(u8, messages[0].body);
 }
 
-/// Post message to jwz
+/// Post message to zawinski store directly
 fn postJwzMessage(allocator: std.mem.Allocator, topic: []const u8, message: []const u8) !void {
-    // Write message to temp file with thread ID to avoid race conditions
-    var path_buf: [64]u8 = undefined;
-    const tid = std.Thread.getCurrentId();
-    const ts = std.time.timestamp();
-    const tmp_path = std.fmt.bufPrint(&path_buf, "/tmp/idle-anchor-{d}-{d}.json", .{ tid, ts }) catch "/tmp/idle-anchor.json";
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return error.StoreNotFound;
+    defer allocator.free(store_dir);
 
-    const file = try std.fs.createFileAbsolute(tmp_path, .{});
-    defer file.close();
-    defer std.fs.deleteFileAbsolute(tmp_path) catch {};
-    try file.writeAll(message);
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return error.StoreOpenFailed;
+    defer store.deinit();
 
-    var cmd_buf: [512]u8 = undefined;
-    const cmd = try std.fmt.bufPrint(&cmd_buf, "jwz topic new {s} 2>/dev/null; jwz post {s} -f {s} 2>/dev/null", .{ topic, topic, tmp_path });
+    // Ensure topic exists
+    _ = store.fetchTopic(topic) catch |err| {
+        if (err == zawinski.store.StoreError.TopicNotFound) {
+            const topic_id = store.createTopic(topic, "") catch return error.TopicCreateFailed;
+            allocator.free(topic_id);
+        } else {
+            return error.TopicFetchFailed;
+        }
+    };
 
-    var child = std.process.Child.init(&.{ "sh", "-c", cmd }, allocator);
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Ignore;
-    try child.spawn();
-    _ = try child.wait();
+    const sender = zawinski.store.Sender{
+        .id = "idle",
+        .name = "idle",
+        .model = null,
+        .role = "loop",
+    };
+
+    const msg_id = try store.createMessage(topic, null, message, .{ .sender = sender });
+    allocator.free(msg_id);
 }
 

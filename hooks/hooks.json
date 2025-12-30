@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start-hook.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/idle session-start"
           }
         ]
       }
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-hook.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/idle stop"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-stop-hook.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/idle subagent-stop"
           }
         ]
       }
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-hook.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/idle pre-tool-use"
           }
         ]
       }
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-hook.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/idle pre-compact"
           }
         ]
       }
