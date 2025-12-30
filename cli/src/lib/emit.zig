@@ -193,7 +193,7 @@ pub fn postMessage(
 
     // Create sender identity
     const sender = zawinski.store.Sender{
-        .id = "idle-hook",
+        .id = "idle",
         .name = "idle",
         .model = null,
         .role = @tagName(role),

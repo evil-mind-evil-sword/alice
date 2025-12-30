@@ -198,7 +198,7 @@ fn postJwzMessage(allocator: std.mem.Allocator, topic: []const u8, message: []co
     var path_buf: [64]u8 = undefined;
     const tid = std.Thread.getCurrentId();
     const ts = std.time.timestamp();
-    const tmp_path = std.fmt.bufPrint(&path_buf, "/tmp/idle-hook-{d}-{d}.json", .{ tid, ts }) catch "/tmp/idle-hook.json";
+    const tmp_path = std.fmt.bufPrint(&path_buf, "/tmp/idle-{d}-{d}.json", .{ tid, ts }) catch "/tmp/idle.json";
 
     const file = try std.fs.createFileAbsolute(tmp_path, .{});
     defer file.close();

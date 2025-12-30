@@ -11,7 +11,7 @@ const hooks = struct {
 };
 
 const usage =
-    \\Usage: idle-hook <command> [options]
+    \\Usage: idle <command> [options]
     \\
     \\Hooks:
     \\  stop           Stop hook (core loop mechanism)
@@ -77,7 +77,7 @@ pub fn main() !u8 {
     } else if (std.mem.eql(u8, command, "issues")) {
         return runIssues(allocator, args[2..]);
     } else if (std.mem.eql(u8, command, "version")) {
-        try writeStdout("idle-hook 0.1.0\n");
+        try writeStdout("idle 0.1.0\n");
         return 0;
     } else if (std.mem.eql(u8, command, "help") or std.mem.eql(u8, command, "--help") or std.mem.eql(u8, command, "-h")) {
         try writeStdout(usage);
@@ -211,7 +211,7 @@ fn runDoctor(allocator: std.mem.Allocator) !u8 {
 fn runEmit(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
     // Parse: emit <topic> <role> <action> [--task-id ID] [--status S] [--confidence C] [--summary TEXT]
     if (args.len < 3) {
-        try writeStderr("Usage: idle-hook emit <topic> <role> <action> [options]\n");
+        try writeStderr("Usage: idle emit <topic> <role> <action> [options]\n");
         return 1;
     }
 
@@ -260,7 +260,7 @@ fn runEmit(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
 fn runSpawn(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
     // Parse: spawn <agent-type> <task-json> [--timeout N] [--background]
     if (args.len < 2) {
-        try writeStderr("Usage: idle-hook spawn <charlie|bob> <task-json> [--timeout N] [--background]\n");
+        try writeStderr("Usage: idle spawn <charlie|bob> <task-json> [--timeout N] [--background]\n");
         return 1;
     }
 
@@ -310,7 +310,7 @@ fn runSpawn(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
 fn runWorktree(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
     // Parse: worktree <create|land|cleanup> <issue-id> [--base REF]
     if (args.len < 2) {
-        try writeStderr("Usage: idle-hook worktree <create|land|cleanup> <issue-id> [--base REF]\n");
+        try writeStderr("Usage: idle worktree <create|land|cleanup> <issue-id> [--base REF]\n");
         return 1;
     }
 
@@ -469,7 +469,7 @@ fn runIssues(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
         }
     } else if (std.mem.eql(u8, subcommand, "show")) {
         const id = issue_id orelse {
-            try writeStderr("Usage: idle-hook issues show <id>\n");
+            try writeStderr("Usage: idle issues show <id>\n");
             return 1;
         };
 
@@ -489,7 +489,7 @@ fn runIssues(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
         try writeStdout(output);
     } else if (std.mem.eql(u8, subcommand, "close")) {
         const id = issue_id orelse {
-            try writeStderr("Usage: idle-hook issues close <id>\n");
+            try writeStderr("Usage: idle issues close <id>\n");
             return 1;
         };
 

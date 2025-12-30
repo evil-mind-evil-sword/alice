@@ -1,7 +1,7 @@
 .{
-    .name = .idle_hook,
+    .name = .idle,
     .version = "0.1.0",
-    .fingerprint = 0x6918f13b13924afb,
+    .fingerprint = 0xdc24b515ed9d4881,
 
     .dependencies = .{
         .zawinski = .{

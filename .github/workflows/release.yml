@@ -18,15 +18,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-linux
-            artifact: idle-hook-linux-x86_64
+            artifact: idle-linux-x86_64
             zig_platform: x86_64-linux
           - os: macos-latest
             target: x86_64-macos
-            artifact: idle-hook-macos-x86_64
+            artifact: idle-macos-x86_64
             zig_platform: aarch64-macos
           - os: macos-latest
             target: aarch64-macos
-            artifact: idle-hook-macos-aarch64
+            artifact: idle-macos-aarch64
             zig_platform: aarch64-macos
 
     runs-on: ${{ matrix.os }}
@@ -51,7 +51,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp cli/zig-out/bin/idle-hook dist/${{ matrix.artifact }}
+          cp cli/zig-out/bin/idle dist/${{ matrix.artifact }}
           chmod +x dist/${{ matrix.artifact }}
 
       - name: Upload artifact
