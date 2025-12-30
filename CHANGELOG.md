@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-12-29
+
+### Added
+
+- **Orchestrator/Worker architecture** for scalable research
+  - `charlie` agent: Haiku-based leaf worker for focused tasks
+  - bob upgraded to Opus orchestrator that spawns workers via `claude -p`
+  - Recursive decomposition with bounds (MAX_DEPTH=3, MAX_WORKERS=10)
+  - Task contracts with deliverables and acceptance criteria
+  - Parallel worker dispatch with jwz coordination
+
+### Changed
+
+- `bob` model upgraded from haiku to opus (orchestration role)
+- `researching` skill updated for orchestrator/worker pattern
+- All inter-agent communication via jwz messaging
+
+### Architecture
+
+```
+bob (orchestrator, opus)
+ ├─→ bob (recursive, if complex)
+ │    └─→ charlie (worker, haiku)
+ └─→ charlie (worker, haiku)
+      └─→ alice (review, on request)
+```
+
 ## [1.2.0] - 2025-12-29
 
 ### Changed

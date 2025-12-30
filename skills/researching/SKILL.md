@@ -1,43 +1,42 @@
 ---
 name: researching
-description: Comprehensive research with quality gate. Composes bob (research) with alice (review) for source-checked, confidence-calibrated findings. Use when research should be verified and persist.
+description: Comprehensive research with orchestrated workers and quality gate. Bob decomposes tasks, spawns charlie workers in parallel, synthesizes results, and routes to alice for review. Use for complex research that should be verified and persist.
 ---
 
 # Researching Skill
 
-Compose bob (fast research) with alice (quality gate) for verified research artifacts.
+Orchestrated research with parallel workers and quality gate.
 
 ## When to Use
 
+- Complex research requiring multiple sub-queries
 - Need documented research that persists beyond conversation
 - Topic requires source verification and confidence calibration
 - Research should be discoverable by other agents via jwz
 - High-stakes decisions that need cited evidence
 
-**Don't use for**: Quick lookups where you don't need verification. Just ask naturally and bob will be auto-discovered.
+**Don't use for**: Quick lookups. Just ask naturally.
+
+## Agent Roles
+
+| Agent | Role | Model |
+|-------|------|-------|
+| **bob** | Orchestrator - decomposes, dispatches, synthesizes | opus |
+| **charlie** | Worker - executes focused queries | haiku |
+| **alice** | Quality gate - reviews synthesis | opus |
 
 ## Composition Pattern
 
-**Review-Gate with Bounded Iteration (max 1 revision)**
-
 ```
-bob (research) ──→ alice (quality gate)
-                        │
-               PASS ────┼──── REVISE
-                 │             │
-               DONE      bob (fix, 1x max)
-                               │
-                         alice (final gate)
+bob (orchestrator)
+ ├─→ charlie (worker) ──→ jwz ──┐
+ ├─→ charlie (worker) ──→ jwz ──┼─→ bob (synthesize) ──→ alice (review)
+ └─→ charlie (worker) ──→ jwz ──┘
 ```
 
-- bob produces research with citations
-- alice validates quality (not content accuracy - that's bob's job)
-- Max 1 revision keeps cost predictable
-- Stop conditions: PASS, one revision done, or needs user input
+**Bounds**: MAX_DEPTH=3, MAX_WORKERS=10
 
 ## Quality Rubric (Shared)
-
-Both agents apply this checklist:
 
 | Criterion | Check |
 |-----------|-------|
@@ -49,117 +48,110 @@ Both agents apply this checklist:
 
 ## Workflow
 
-### Step 1: Research (bob)
+### Step 1: Orchestrate (bob)
 
-Invoke bob to research the topic:
+Invoke bob to orchestrate research:
 
 ```
-Task(subagent_type="idle:bob", prompt="Research: <topic>")
+Task(subagent_type="idle:bob", prompt="Research: <topic>
+
+Decompose into focused sub-queries and dispatch charlie workers.
+Synthesize findings into a coherent artifact.")
 ```
 
-**bob produces**:
-- Artifact at `.claude/plugins/idle/bob/<topic>.md`
-- Status: FOUND | NOT_FOUND | PARTIAL
-- Confidence: HIGH | MEDIUM | LOW
-- Sources with credibility ratings
-- Findings with inline citations
-- Open Questions section
-- Self-check against quality rubric
+**bob does**:
+1. Decomposes topic into 3-5 focused queries
+2. Spawns charlie workers in parallel via `claude -p`
+3. Workers post findings to jwz topic
+4. Collects and synthesizes results
+5. Validates citations with bibval
+6. Writes artifact to `.claude/plugins/idle/bob/<topic>.md`
 
 **bob posts to jwz**:
 ```bash
-jwz post "issue:<id>" --role bob \
-  -m "[bob] RESEARCH: <topic>
+jwz post "research:<run_id>" --role bob \
+  -m "[bob] SYNTHESIS: <topic>
 Path: .claude/plugins/idle/bob/<topic>.md
-Summary: <finding>
-Confidence: HIGH|MEDIUM|LOW
-Sources: <count>"
+Workers: <N> dispatched, <M> succeeded
+Confidence: HIGH|MEDIUM|LOW"
 ```
 
 ### Step 2: Quality Gate (alice)
 
-Invoke alice to review bob's artifact:
+Invoke alice to review bob's synthesis:
 
 ```
-Task(subagent_type="idle:alice", prompt="Review bob's research at .claude/plugins/idle/bob/<topic>.md using quality gate mode")
-```
+Task(subagent_type="idle:alice", prompt="Review bob's research synthesis at .claude/plugins/idle/bob/<topic>.md
 
-**alice evaluates**:
-- Citation quality (claim-to-source alignment)
-- Coverage gaps (missing perspectives)
-- Overconfidence (claims without evidence)
-- Recency (outdated information)
+Check:
+- Worker coverage adequate?
+- Synthesis accurately represents findings?
+- Citations properly attributed?
+- Conflicts handled appropriately?")
+```
 
 **alice returns**: **PASS** | **REVISE**
 
-If REVISE, alice provides:
-- Required Fixes (blocking) - must address
-- Nice-to-Haves (optional) - can skip
-
-**alice posts to jwz**:
-```bash
-jwz post "issue:<id>" --role alice \
-  -m "[alice] REVIEW: bob's <topic> research
-Verdict: PASS|REVISE
-Required fixes: <count or 'none'>
-Notes: <summary>"
-```
+If REVISE, alice provides Required Fixes.
 
 ### Step 3: Revision (if REVISE, max 1x)
 
-Re-invoke bob with alice's required fixes:
+Re-invoke bob with alice's fixes:
 
 ```
-Task(subagent_type="idle:bob", prompt="Revise research at .claude/plugins/idle/bob/<topic>.md
+Task(subagent_type="idle:bob", prompt="Revise synthesis at .claude/plugins/idle/bob/<topic>.md
 
 Alice's required fixes:
 - <fix 1>
 - <fix 2>
 
-Update the artifact and re-post to jwz.")
+May spawn additional charlie workers if needed.")
 ```
 
 ### Step 4: Final Gate
 
-Re-invoke alice for final review:
-
-```
-Task(subagent_type="idle:alice", prompt="Final review of bob's revised research at .claude/plugins/idle/bob/<topic>.md")
-```
-
-alice returns:
-- **PASS** - Ready to use
-- **PASS_WITH_LIMITATIONS** - Usable with noted caveats
-- **NEEDS_INPUT** - Unresolvable without user guidance
+Re-invoke alice for final review.
 
 ## Stop Conditions
 
-1. alice returns PASS (or PASS_WITH_LIMITATIONS)
+1. alice returns PASS
 2. One revision cycle completed
-3. Issues need user input (scope change, access needed)
+3. Issues need user input
 
 ## Output
 
-Final deliverables:
 - Artifact: `.claude/plugins/idle/bob/<topic>.md`
-- jwz thread on `issue:<id>` with research + review history
+- jwz thread with orchestration log + review history
+- Worker findings preserved in jwz
 
 ## Example
 
-```bash
-# User asks for OAuth research
-# 1. bob researches, writes artifact, posts to jwz
-# 2. alice reviews, finds missing PKCE coverage, returns REVISE
-# 3. bob revises artifact with PKCE section
-# 4. alice re-reviews, returns PASS
-# 5. Skill completes with verified artifact
+```
+User: "Research authentication best practices for APIs"
+
+bob (orchestrator):
+ ├─→ charlie: "JWT validation" → FOUND (HIGH)
+ ├─→ charlie: "OAuth PKCE flow" → FOUND (HIGH)
+ ├─→ charlie: "Session security" → FOUND (MEDIUM)
+ └─→ charlie: "Rate limiting" → FOUND (HIGH)
+
+bob synthesizes → artifact
+
+alice reviews → REVISE (missing token refresh)
+
+bob spawns:
+ └─→ charlie: "Token refresh patterns" → FOUND
+
+bob updates synthesis → artifact v2
+
+alice reviews → PASS
 ```
 
 ## Discovery
 
-Find prior research:
 ```bash
-jwz search "RESEARCH:"
+jwz search "SYNTHESIS:"
+jwz search "FINDING:"
 jwz search "REVIEW:" | grep "Verdict: PASS"
 ls .claude/plugins/idle/bob/
 ```
