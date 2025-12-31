@@ -4,9 +4,6 @@ set -e
 # idle installer
 # Usage: curl -fsSL https://github.com/evil-mind-evil-sword/idle/releases/latest/download/install.sh | sh
 
-REPO="evil-mind-evil-sword/idle"
-PLUGIN_DIR="${IDLE_PLUGIN_DIR:-$HOME/.claude/plugins/idle}"
-
 echo "Installing idle plugin..."
 echo ""
 
@@ -42,48 +39,46 @@ fi
 echo "Dependencies installed."
 echo ""
 
-# --- Install plugin ---
+# --- Install plugin via Claude Code ---
 
-# Get version
-if [ -n "$IDLE_VERSION" ]; then
-    VERSION="$IDLE_VERSION"
+if command -v claude >/dev/null 2>&1; then
+    echo "Installing idle plugin via Claude Code..."
+
+    # Add marketplace (idempotent)
+    claude plugin marketplace add evil-mind-evil-sword/marketplace 2>/dev/null || true
+
+    # Refresh marketplace to get latest versions
+    echo "Refreshing marketplace..."
+    claude plugin marketplace refresh 2>/dev/null || true
+
+    # Check if already installed
+    if claude plugin list 2>/dev/null | grep -q "idle@emes"; then
+        echo "Updating idle plugin..."
+        if claude plugin update idle@emes 2>/dev/null; then
+            echo "idle plugin updated!"
+        else
+            # Fallback: reinstall
+            claude plugin uninstall idle@emes 2>/dev/null || true
+            if claude plugin install idle@emes 2>/dev/null; then
+                echo "idle plugin reinstalled!"
+            else
+                echo "Plugin update failed. Try manually: /plugin update idle@emes"
+            fi
+        fi
+    else
+        echo "Installing idle plugin..."
+        if claude plugin install idle@emes 2>/dev/null; then
+            echo "idle plugin installed!"
+        else
+            echo "Plugin install failed. Try manually in Claude Code:"
+            echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
+            echo "  /plugin install idle@emes"
+        fi
+    fi
 else
-    VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-fi
-
-TARBALL_URL="https://github.com/${REPO}/releases/download/${VERSION}/idle-plugin.tar.gz"
-
-echo "Installing idle ${VERSION}..."
-
-# Create plugin directory
-mkdir -p "$PLUGIN_DIR"
-
-# Download and extract plugin
-curl -fsSL "$TARBALL_URL" | tar -xz -C "$PLUGIN_DIR"
-
-echo "Plugin installed to $PLUGIN_DIR"
-echo ""
-
-# --- Register with Claude Code ---
-
-CLAUDE_SETTINGS="$HOME/.claude/settings.json"
-
-# Create settings file if it doesn't exist
-if [ ! -f "$CLAUDE_SETTINGS" ]; then
-    mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
-    echo '{}' > "$CLAUDE_SETTINGS"
-fi
-
-# Enable plugin in settings
-if command -v jq >/dev/null 2>&1; then
-    # Backup settings
-    cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.bak"
-
-    # Add plugin path and enable it
-    jq '.plugins = (.plugins // []) + [{"path": "'"$PLUGIN_DIR"'"}] | .plugins = (.plugins | unique_by(.path)) | .enabledPlugins.idle = true' "$CLAUDE_SETTINGS" > "$CLAUDE_SETTINGS.tmp"
-    mv "$CLAUDE_SETTINGS.tmp" "$CLAUDE_SETTINGS"
-
-    echo "Plugin registered and enabled in Claude Code settings."
+    echo "claude CLI not found. Install the plugin manually in Claude Code:"
+    echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
+    echo "  /plugin install idle@emes"
 fi
 
 echo ""
