@@ -1,6 +1,7 @@
 const std = @import("std");
 const idle = @import("idle");
 const zawinski = @import("zawinski");
+const tissue = @import("tissue");
 const extractJsonString = idle.event_parser.extractString;
 
 /// Session start hook - injects loop context and agent awareness
@@ -65,9 +66,53 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
         \\Usage: Task tool with subagent_type="idle:alice"
         \\
     );
+
+    // Inject ready issues from tissue
+    try injectReadyIssues(allocator, stdout);
+
     try stdout.flush();
 
     return 0;
+}
+
+/// Fetch and display ready issues from tissue
+fn injectReadyIssues(allocator: std.mem.Allocator, stdout: anytype) !void {
+    const store_dir = tissue.store.discoverStoreDir(allocator) catch return;
+    defer allocator.free(store_dir);
+
+    var store = tissue.store.Store.open(allocator, store_dir) catch return;
+    defer store.deinit();
+
+    const ready_issues = store.listReadyIssues() catch return;
+    defer {
+        for (ready_issues) |*issue| issue.deinit(allocator);
+        allocator.free(ready_issues);
+    }
+
+    if (ready_issues.len == 0) {
+        try stdout.writeAll("\nNo ready issues in backlog.\n");
+        return;
+    }
+
+    try stdout.writeAll("\n=== READY ISSUES ===\n");
+
+    // Show up to 15 issues to avoid overwhelming context
+    const max_display: usize = 15;
+    const display_count = @min(ready_issues.len, max_display);
+
+    for (ready_issues[0..display_count]) |issue| {
+        try stdout.print("{s}  P{d}  {s}\n", .{
+            issue.id,
+            issue.priority,
+            issue.title,
+        });
+    }
+
+    if (ready_issues.len > max_display) {
+        try stdout.print("... and {} more (run `tissue ready` to see all)\n", .{ready_issues.len - max_display});
+    }
+
+    try stdout.writeAll("====================\n");
 }
 
 /// Read loop state from zawinski store
