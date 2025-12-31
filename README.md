@@ -20,12 +20,6 @@ Agent works → Stop hook → alice reviews → issues? → block/allow
 curl -fsSL https://github.com/evil-mind-evil-sword/idle/releases/latest/download/install.sh | sh
 ```
 
-## Escape Hatch
-
-```sh
-touch .idle-disabled    # Bypass hooks
-```
-
 ## Skills
 
 | Skill | Purpose |

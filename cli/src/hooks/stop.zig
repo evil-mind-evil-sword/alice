@@ -16,11 +16,6 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     const cwd = extractJsonString(input_json, "\"cwd\"") orelse ".";
     std.posix.chdir(cwd) catch {};
 
-    // Check file-based escape hatch
-    if (std.fs.cwd().access(".idle-disabled", .{})) |_| {
-        return 0; // Escape hatch active - allow exit
-    } else |_| {}
-
     // Count issues BEFORE alice review
     const issues_before = countOpenAliceReviewIssues(allocator);
 
