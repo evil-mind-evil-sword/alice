@@ -175,6 +175,7 @@ fn parseStack(allocator: std.mem.Allocator, json_str: []const u8, stack: *std.Ar
         const base_ref = extractString(obj_str, "\"base_ref\"");
         const filter = extractString(obj_str, "\"filter\"");
         const reviewed = extractBool(obj_str, "\"reviewed\"") orelse false;
+        const checkpoint_reviewed = extractBool(obj_str, "\"checkpoint_reviewed\"") orelse false;
 
         try stack.append(allocator, .{
             .id = id,
@@ -188,6 +189,7 @@ fn parseStack(allocator: std.mem.Allocator, json_str: []const u8, stack: *std.Ar
             .base_ref = base_ref,
             .filter = filter,
             .reviewed = reviewed,
+            .checkpoint_reviewed = checkpoint_reviewed,
         });
     }
 }

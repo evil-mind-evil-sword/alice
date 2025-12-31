@@ -189,12 +189,34 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
             // Update iteration
             const new_iter = result.new_iteration orelse frame.iter + 1;
 
-            // Build continuation message
-            var reason_buf: [4096]u8 = undefined;
+            // Check if checkpoint review is due (every 3 iterations)
+            const checkpoint_interval = idle.StateMachine.CHECKPOINT_INTERVAL;
+            const checkpoint_due = new_iter > 0 and new_iter % checkpoint_interval == 0 and !frame.checkpoint_reviewed;
+
+            // Build continuation or checkpoint message
+            var reason_buf: [8192]u8 = undefined;
             var reason_len: usize = 0;
 
-            reason_len += (std.fmt.bufPrint(reason_buf[reason_len..],
-                "[ITERATION {}/{}] Continue working on the task. Check your progress and either complete the task or keep iterating.", .{ new_iter, frame.max }) catch return 0).len;
+            if (checkpoint_due) {
+                // Checkpoint review message
+                reason_len += (std.fmt.bufPrint(reason_buf[reason_len..],
+                    \\[CHECKPOINT REVIEW - Iteration {}/{}] Periodic review triggered.
+                    \\
+                    \\Invoke alice for a checkpoint review using Task tool with subagent_type="idle:alice".
+                    \\
+                    \\Tell alice this is a CHECKPOINT review (not completion). She will:
+                    \\1. Check progress against the original task
+                    \\2. Identify any issues early (create tissue issues tagged `alice-review`)
+                    \\3. Give guidance for the next phase
+                    \\4. Return CONTINUE (keep working) or PAUSE (stop and address issues)
+                    \\
+                    \\After checkpoint review, continue working on the task.
+                , .{ new_iter, frame.max }) catch return 0).len;
+            } else {
+                // Normal continuation message
+                reason_len += (std.fmt.bufPrint(reason_buf[reason_len..],
+                    "[ITERATION {}/{}] Continue working on the task. Check your progress and either complete the task or keep iterating.", .{ new_iter, frame.max }) catch return 0).len;
+            }
 
             // Add worktree context if available
             if (frame.worktree_path) |wt_path| {
@@ -214,11 +236,13 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
                     "\n\nIMPORTANT: All file operations must use absolute paths under {s}", .{wt_path}) catch return 0).len;
             }
 
-            // Update state with new iteration (reset reviewed to false since new work will be done)
+            // Update state with new iteration
+            // Reset reviewed to false, set checkpoint_reviewed based on whether we're triggering checkpoint
             var state_buf: [2048]u8 = undefined;
             const ts = formatIso8601(now_ts);
+            const checkpoint_reviewed_str = if (checkpoint_due) "true" else "false";
             var state_len = (std.fmt.bufPrint(&state_buf,
-                \\{{"schema":1,"event":"STATE","run_id":"{s}","updated_at":"{s}","stack":[{{"id":"{s}","mode":"{s}","iter":{},"max":{},"prompt_file":"{s}","reviewed":false
+                \\{{"schema":1,"event":"STATE","run_id":"{s}","updated_at":"{s}","stack":[{{"id":"{s}","mode":"{s}","iter":{},"max":{},"prompt_file":"{s}","reviewed":false,"checkpoint_reviewed":{s}
             , .{
                 state.run_id,
                 &ts,
@@ -227,6 +251,7 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
                 new_iter,
                 frame.max,
                 frame.prompt_file,
+                checkpoint_reviewed_str,
             }) catch return 0).len;
 
             // Add optional fields
@@ -251,12 +276,12 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
             try postJwzMessage(allocator, "loop:current", state_buf[0..state_len]);
 
             // Output block decision
-            var stdout_buf: [8192]u8 = undefined;
+            var stdout_buf: [16384]u8 = undefined;
             var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
             const stdout = &stdout_writer.interface;
 
             // Escape reason for JSON
-            var escaped_buf: [8192]u8 = undefined;
+            var escaped_buf: [16384]u8 = undefined;
             const escaped = escapeJson(reason_buf[0..reason_len], &escaped_buf);
 
             try stdout.print("{{\"decision\":\"block\",\"reason\":\"{s}\"}}\n", .{escaped});

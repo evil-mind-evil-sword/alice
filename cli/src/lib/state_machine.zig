@@ -62,6 +62,9 @@ pub const CompletionReason = enum {
     }
 };
 
+/// Checkpoint review interval (every N iterations)
+pub const CHECKPOINT_INTERVAL: u32 = 3;
+
 /// Stack frame representing a loop execution context
 pub const StackFrame = struct {
     id: []const u8,
@@ -78,6 +81,14 @@ pub const StackFrame = struct {
     filter: ?[]const u8 = null,
     // review tracking - true if alice has reviewed this iteration's completion
     reviewed: bool = false,
+    // checkpoint review tracking - true if periodic checkpoint review done for current interval
+    checkpoint_reviewed: bool = false,
+
+    /// Check if checkpoint review is due at current iteration
+    pub fn isCheckpointDue(self: *const StackFrame) bool {
+        // Checkpoints at iterations 3, 6, 9, ...
+        return self.iter > 0 and self.iter % CHECKPOINT_INTERVAL == 0 and !self.checkpoint_reviewed;
+    }
 };
 
 /// Loop state parsed from jwz or state file
