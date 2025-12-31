@@ -2,9 +2,9 @@
 description: Iterate on a task until complete, or work through the issue tracker
 ---
 
-# Loop Command
+# /loop
 
-Universal iteration loop. Works on a specific task or pulls from the issue tracker.
+Iterate on a task or work through your issue backlog.
 
 ## Usage
 
@@ -12,177 +12,66 @@ Universal iteration loop. Works on a specific task or pulls from the issue track
 /loop [task description]
 ```
 
-- **With args**: Iterate on that specific task
-- **Without args**: Pull issues from tracker and work indefinitely
-
 ## Modes
 
-### Task Mode (with args)
+### Task Mode (with arguments)
 
-Simple iteration on a specific task. No worktree, no issue tracker.
-
-**Limits**: 10 iterations, 3 consecutive failures = stuck
-
-### Issue Mode (no args)
-
-Pull from `tissue ready`, create worktree, work issue, auto-land, repeat.
-
-**Limits**: 10 iterations per issue, unlimited issues
-
-## How It Works
-
-Uses a **Stop hook** to intercept exit and force re-entry until complete. Loop state stored via jwz messaging.
-
-The hook checks for completion signals (`<loop-done>`) to decide whether to continue or allow exit.
-
-## Setup
-
-Initialize based on mode:
-
-```bash
-RUN_ID="loop-$(date +%s)-$$"
-REPO_ROOT=$(git rev-parse --show-toplevel)
-
-# Ensure jwz is initialized
-[ ! -d .jwz ] && jwz init
-
-if [[ -z "$ARGUMENTS" ]]; then
-    # Issue mode - pick first ready issue
-    ISSUE_ID=$(tissue ready --format=id 2>/dev/null | head -1)
-    if [[ -z "$ISSUE_ID" ]]; then
-        echo "No issues ready to work. Use 'tissue list' to see all issues."
-        exit 0
-    fi
-
-    # Validate issue exists
-    if ! tissue show "$ISSUE_ID" >/dev/null 2>&1; then
-        echo "Error: Issue $ISSUE_ID not found"
-        exit 1
-    fi
-
-    MODE="issue"
-
-    # Resolve base ref (config > origin/HEAD > main > master > HEAD)
-    BASE_REF=""
-    BASE_REF=$(git config idle.baseRef 2>/dev/null || true)
-    if [[ -z "$BASE_REF" ]]; then
-        BASE_REF=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||' || true)
-    fi
-    if [[ -z "$BASE_REF" ]] && git show-ref --verify refs/heads/main >/dev/null 2>&1; then
-        BASE_REF="main"
-    fi
-    if [[ -z "$BASE_REF" ]] && git show-ref --verify refs/heads/master >/dev/null 2>&1; then
-        BASE_REF="master"
-    fi
-    if [[ -z "$BASE_REF" ]]; then
-        BASE_REF="HEAD"
-    fi
-
-    # Create worktree
-    SAFE_ID=$(printf '%s' "$ISSUE_ID" | tr -cd 'a-zA-Z0-9_-')
-    BRANCH="idle/issue/$SAFE_ID"
-    WORKTREE_PATH="$REPO_ROOT/.worktrees/idle/$SAFE_ID"
-
-    # Ensure .worktrees/ is gitignored
-    grep -q '^\.worktrees/' "$REPO_ROOT/.gitignore" 2>/dev/null || echo ".worktrees/" >> "$REPO_ROOT/.gitignore"
-
-    if git worktree list | grep -qF "$WORKTREE_PATH"; then
-        echo "Reusing existing worktree at $WORKTREE_PATH"
-    else
-        mkdir -p "$(dirname "$WORKTREE_PATH")"
-        git worktree add -b "$BRANCH" "$WORKTREE_PATH" "$BASE_REF" 2>/dev/null || \
-        git worktree add "$WORKTREE_PATH" "$BRANCH"
-
-        # Initialize submodules
-        [[ -f "$REPO_ROOT/.gitmodules" ]] && git -C "$WORKTREE_PATH" submodule update --init --recursive
-    fi
-
-    # Store prompt as blob
-    PROMPT_BLOB=$(tissue show "$ISSUE_ID" | jwz blob put /dev/stdin)
-
-    # Post initial state
-    NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    jwz post "loop:current" -m "{\"schema\":2,\"event\":\"STATE\",\"run_id\":\"$RUN_ID\",\"updated_at\":\"$NOW\",\"stack\":[{\"id\":\"$RUN_ID\",\"mode\":\"issue\",\"iter\":1,\"max\":10,\"prompt_blob\":\"$PROMPT_BLOB\",\"issue_id\":\"$ISSUE_ID\",\"worktree_path\":\"$WORKTREE_PATH\",\"branch\":\"$BRANCH\",\"base_ref\":\"$BASE_REF\"}]}"
-
-    jwz topic new "issue:$ISSUE_ID" 2>/dev/null || true
-    jwz post "issue:$ISSUE_ID" -m "[loop] STARTED: Working in $WORKTREE_PATH"
-else
-    # Task mode - simple iteration
-    MODE="task"
-
-    # Store prompt as blob
-    PROMPT_BLOB=$(echo "$ARGUMENTS" | jwz blob put /dev/stdin)
-
-    NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    jwz post "loop:current" -m "{\"schema\":2,\"event\":\"STATE\",\"run_id\":\"$RUN_ID\",\"updated_at\":\"$NOW\",\"stack\":[{\"id\":\"$RUN_ID\",\"mode\":\"task\",\"iter\":1,\"max\":10,\"prompt_blob\":\"$PROMPT_BLOB\"}]}"
-    jwz post "project:$(basename $PWD)" -m "[loop] STARTED: $ARGUMENTS"
-fi
+```sh
+/loop Add input validation to API endpoints
 ```
 
-## Worktree Context (Issue Mode)
+Iterates on the task until complete. No issue tracker needed.
 
-All file operations use the worktree path:
-- **Read/Write/Edit**: Absolute paths under `$WORKTREE_PATH`
-- **Bash**: Prefix with `cd "$WORKTREE_PATH" && ...`
-- **tissue commands**: Run from main repo
+- **Max iterations**: 10
+- **Worktree**: No (works in current directory)
+- **Auto-land**: No
 
-The stop hook injects worktree context on each iteration.
+### Issue Mode (no arguments)
 
-## Workflow
-
-### Task Mode
-1. Work on the task incrementally
-2. On success: `<loop-done>COMPLETE</loop-done>`
-3. On failure: analyze, retry
-
-### Issue Mode
-1. Read the issue from the prompt
-2. Implement the fix in the worktree
-3. Run review before completion
-4. On success: `<loop-done>COMPLETE</loop-done>` (auto-lands)
-5. Loop picks next issue automatically
-
-## Definition of Done (Issue Mode)
-
-Before completing, you MUST:
-1. **Commit all changes**: No uncommitted changes
-2. **Run review**: Code must be reviewed
-3. **Address feedback**: Fix CHANGES_REQUESTED (max 3 iterations)
-
-The stop hook enforces these requirements.
-
-## Completion
-
-**Success**:
-```
-<loop-done>COMPLETE</loop-done>
-```
-- Task mode: Loop exits
-- Issue mode: Auto-lands, then picks next issue
-
-**Auto-land flow** (issue mode):
-```bash
-git fetch origin
-git checkout main
-git merge --ff-only "$BRANCH" && git push origin main
-git worktree remove "$WORKTREE_PATH"
-git branch -d "$BRANCH"
-tissue status "$ISSUE_ID" closed
+```sh
+/loop
 ```
 
-**Max iterations**:
-```
-<loop-done>MAX_ITERATIONS</loop-done>
-```
+Pulls issues from `tissue ready`, works them one by one.
 
-**Stuck**:
-```
-<loop-done>STUCK</loop-done>
-```
+- **Max iterations**: 10 per issue
+- **Worktree**: Yes (isolates each issue in `.worktrees/idle/<issue-id>/`)
+- **Auto-land**: Yes (merges to main on completion)
+
+## Completion Signals
+
+Signal completion status in your response:
+
+| Signal | Meaning |
+|--------|---------|
+| `<loop-done>COMPLETE</loop-done>` | Task finished successfully |
+| `<loop-done>STUCK</loop-done>` | Cannot make progress |
+| `<loop-done>MAX_ITERATIONS</loop-done>` | Hit iteration limit |
+
+## Alice Review
+
+When you signal `COMPLETE` or `STUCK`, the Stop hook:
+1. Blocks exit
+2. Requests alice review
+3. Alice analyzes your work
+4. If approved → exit. If not → continue.
+
+This ensures quality before completion.
+
+## Issue Mode Workflow
+
+1. `/loop` picks first ready issue from tissue
+2. Creates worktree at `.worktrees/idle/<issue-id>/`
+3. You work on the issue
+4. Signal `<loop-done>COMPLETE</loop-done>`
+5. alice reviews
+6. Auto-lands: merges to main, deletes worktree, closes issue
+7. Picks next issue, repeats
 
 ## Escape Hatches
 
-If stuck in an infinite loop:
-1. `/cancel` - Graceful cancellation
-2. `touch .idle-disabled` - File-based bypass (remove after)
-3. Delete `.jwz/` directory - Manual reset
+```sh
+/cancel                  # Graceful cancellation
+touch .idle-disabled     # Bypass hooks
+rm -rf .jwz/             # Reset all state
+```
