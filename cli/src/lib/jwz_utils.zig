@@ -181,6 +181,62 @@ pub fn writeJsonEscaped(writer: anytype, input: []const u8) !void {
     }
 }
 
+/// Read alice review status from zawinski store
+/// Returns "complete", "issues", or null if no status
+pub fn readAliceStatus(allocator: std.mem.Allocator, session_id: []const u8) ?[]const u8 {
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch return null;
+    defer allocator.free(store_dir);
+
+    var store = zawinski.store.Store.open(allocator, store_dir) catch return null;
+    defer store.deinit();
+
+    // Build topic name: alice:status:{session_id}
+    var topic_buf: [256]u8 = undefined;
+    const topic = std.fmt.bufPrint(&topic_buf, "alice:status:{s}", .{session_id}) catch return null;
+
+    const messages = store.listMessages(topic, 1) catch return null;
+    defer {
+        for (messages) |*m| {
+            var msg = m.*;
+            msg.deinit(allocator);
+        }
+        allocator.free(messages);
+    }
+
+    if (messages.len == 0) return null;
+
+    // Parse status from message body (simple JSON: {"status":"complete"} or {"status":"issues"})
+    const body = messages[0].body;
+    if (std.mem.indexOf(u8, body, "\"complete\"")) |_| {
+        return "complete";
+    } else if (std.mem.indexOf(u8, body, "\"issues\"")) |_| {
+        return "issues";
+    }
+    return null;
+}
+
+/// Post alice review status to zawinski store
+pub fn postAliceStatus(allocator: std.mem.Allocator, session_id: []const u8, status: []const u8) void {
+    // Build topic name
+    var topic_buf: [256]u8 = undefined;
+    const topic = std.fmt.bufPrint(&topic_buf, "alice:status:{s}", .{session_id}) catch return;
+
+    // Build message body
+    var msg_buf: [128]u8 = undefined;
+    const msg = std.fmt.bufPrint(&msg_buf, "{{\"status\":\"{s}\"}}", .{status}) catch return;
+
+    postJwzMessage(allocator, topic, msg) catch {};
+}
+
+/// Clear alice status (delete topic or mark stale)
+pub fn clearAliceStatus(allocator: std.mem.Allocator, session_id: []const u8) void {
+    // Post a "cleared" status to invalidate previous
+    var topic_buf: [256]u8 = undefined;
+    const topic = std.fmt.bufPrint(&topic_buf, "alice:status:{s}", .{session_id}) catch return;
+
+    postJwzMessage(allocator, topic, "{\"status\":\"cleared\"}") catch {};
+}
+
 // ============================================================================
 // Tests
 // ============================================================================

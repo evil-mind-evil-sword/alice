@@ -7,12 +7,13 @@ Every exit requires alice review. No issues = exit allowed.
 ## How It Works
 
 ```
-Agent works → Stop hook → alice reviews → issues? → block/allow
+Agent works → Stop hook → "invoke alice" → alice reviews → issues? → block/allow
 ```
 
-1. **Stop hook** invokes alice on every exit attempt
+1. **Stop hook** directs agent to invoke alice via Task tool
 2. **alice** reviews the work, creates `alice-review` issues for problems
-3. **No issues** = exit allowed. **Issues exist** = blocked until fixed.
+3. **SubagentStop** detects alice completion, posts status to jwz
+4. **No issues** = exit allowed. **Issues exist** = blocked until fixed.
 
 ## Install
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2025-12-31
+
+### Changed
+
+- **Alice invocation via Task tool** - Stop hook no longer spawns alice as subprocess
+  - Directs agent to invoke `idle:alice` via Task tool instead
+  - Eliminates infinite recursion from hook inheritance
+- **jwz-based status coordination** - Alice posts status to `alice:status:{session_id}`
+  - `"complete"` when no issues found
+  - `"issues"` when problems detected
+- **SubagentStop detects alice** - Recognizes alice subagent and posts status
+  - No recursive alice review of alice
+  - Uses `subagent_type` and prompt markers for detection
+
+### Fixed
+
+- **Infinite recursion bug** - `claude -p` subprocess inherited hooks, causing alice to spawn alice indefinitely
+
 ## [1.8.1] - 2025-12-31
 
 ### Changed

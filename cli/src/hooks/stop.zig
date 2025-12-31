@@ -2,9 +2,10 @@ const std = @import("std");
 const tissue = @import("tissue");
 const idle = @import("idle");
 const extractJsonString = idle.event_parser.extractString;
+const jwz = idle.jwz_utils;
 
 /// Stop hook - quality gate via alice review
-/// Invokes alice on every exit, allows only if no issues created.
+/// Directs agent to invoke alice, allows only when no issues remain after review.
 pub fn run(allocator: std.mem.Allocator) !u8 {
     // Read hook input from stdin
     const stdin = std.fs.File.stdin();
@@ -16,61 +17,45 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     const cwd = extractJsonString(input_json, "\"cwd\"") orelse ".";
     std.posix.chdir(cwd) catch {};
 
-    // Extract the user's initial prompt
-    const user_prompt = extractJsonString(input_json, "\"initial_prompt\"");
+    // Extract session_id for alice status tracking
+    const session_id = extractJsonString(input_json, "\"session_id\"") orelse "unknown";
 
-    // Count issues BEFORE alice review
-    const issues_before = countOpenAliceReviewIssues(allocator);
+    // Check for open alice-review issues
+    const open_issues = countOpenAliceReviewIssues(allocator);
 
-    // Invoke alice for review
-    invokeAlice(allocator, user_prompt);
-
-    // Count issues AFTER alice review
-    const issues_after = countOpenAliceReviewIssues(allocator);
-
-    // If alice created new issues, block
-    if (issues_after > issues_before) {
-        return blockWithReason(
-            \\[NEEDS_WORK] Alice created {} new issue(s) during review.
-            \\
-            \\Fix all alice-review issues before exit is allowed.
-            \\Run `tissue list -t alice-review` to see them.
-        , .{issues_after - issues_before});
-    }
-
-    // If there are still open issues (from previous reviews), block
-    if (issues_after > 0) {
+    // If issues exist, block and tell agent to fix them
+    if (open_issues > 0) {
+        // Clear alice status so next review is fresh
+        jwz.clearAliceStatus(allocator, session_id);
         return blockWithReason(
             \\[ISSUES REMAIN] {} open alice-review issue(s) exist.
             \\
             \\Fix all issues, then exit will be allowed.
             \\Run `tissue list -t alice-review` to see them.
-        , .{issues_after});
+        , .{open_issues});
     }
 
-    // No issues - alice approved
-    return 0;
-}
+    // Check alice review status
+    const alice_status = jwz.readAliceStatus(allocator, session_id);
 
-/// Invoke alice for review via claude CLI
-fn invokeAlice(allocator: std.mem.Allocator, user_prompt: ?[]const u8) void {
-    // Build alice prompt with user's task
-    var prompt_buf: [8192]u8 = undefined;
-    const alice_prompt = std.fmt.bufPrint(&prompt_buf,
-        \\You are alice, an adversarial reviewer.
-        \\
-        \\The user's task was: {s}
-        \\
-        \\Review the work. Find problems. Use `tissue` to check what was done.
-        \\
-        \\For each problem, create an issue:
-        \\  tissue new "<problem>" -t alice-review -p <1-3>
-        \\
-        \\If no problems, create no issues.
-    , .{user_prompt orelse "(unknown)"}) catch return;
+    if (alice_status) |status| {
+        if (std.mem.eql(u8, status, "complete")) {
+            // Alice reviewed and found no issues - allow exit
+            jwz.clearAliceStatus(allocator, session_id);
+            return 0;
+        }
+    }
 
-    var child = std.process.Child.init(&.{ "claude", "-p", alice_prompt }, allocator);
-    _ = child.spawnAndWait() catch return;
+    // No alice review yet, or previous review found issues that are now fixed
+    // Direct agent to invoke alice for review
+    return blockWithReason(
+        \\[REVIEW REQUIRED] Invoke alice for review before exit.
+        \\
+        \\Use the Task tool to spawn alice:
+        \\  Task(subagent_type="idle:alice", prompt="Review the work done in this session")
+        \\
+        \\Alice will review and create issues if problems are found.
+    , .{});
 }
 
 /// Block exit with a formatted reason

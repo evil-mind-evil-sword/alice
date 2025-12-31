@@ -2,9 +2,11 @@ const std = @import("std");
 const tissue = @import("tissue");
 const idle = @import("idle");
 const extractJsonString = idle.event_parser.extractString;
+const jwz = idle.jwz_utils;
 
-/// SubagentStop hook - quality gate for subagents (Task tool)
-/// Same logic as Stop: invoke alice, check issues
+/// SubagentStop hook - handles alice subagent completion
+/// When alice finishes reviewing, posts status to jwz.
+/// For non-alice subagents, allows exit without review.
 pub fn run(allocator: std.mem.Allocator) !u8 {
     // Read hook input from stdin
     const stdin = std.fs.File.stdin();
@@ -16,94 +18,45 @@ pub fn run(allocator: std.mem.Allocator) !u8 {
     const cwd = extractJsonString(input_json, "\"cwd\"") orelse ".";
     std.posix.chdir(cwd) catch {};
 
-    // Extract the subagent's task
-    const task_prompt = extractJsonString(input_json, "\"prompt\"");
+    // Extract session_id and subagent info
+    const session_id = extractJsonString(input_json, "\"session_id\"") orelse "unknown";
+    const subagent_type = extractJsonString(input_json, "\"subagent_type\"");
+    const prompt = extractJsonString(input_json, "\"prompt\"");
 
-    // Count issues BEFORE alice review
-    const issues_before = countOpenAliceReviewIssues(allocator);
-
-    // Invoke alice for review
-    invokeAlice(allocator, task_prompt);
-
-    // Count issues AFTER alice review
-    const issues_after = countOpenAliceReviewIssues(allocator);
-
-    // If alice created new issues, block
-    if (issues_after > issues_before) {
-        return blockWithReason(
-            \\[NEEDS_WORK] Alice created {} new issue(s) during review.
-            \\
-            \\Fix all alice-review issues before exit is allowed.
-            \\Run `tissue list -t alice-review` to see them.
-        , .{issues_after - issues_before});
+    // Check if this is alice
+    if (isAliceSubagent(subagent_type, prompt)) {
+        // Alice just finished reviewing - post status based on issues created
+        const open_issues = countOpenAliceReviewIssues(allocator);
+        if (open_issues > 0) {
+            jwz.postAliceStatus(allocator, session_id, "issues");
+        } else {
+            jwz.postAliceStatus(allocator, session_id, "complete");
+        }
+        // Always allow alice to exit (no recursive review)
+        return 0;
     }
 
-    // If there are still open issues, block
-    if (issues_after > 0) {
-        return blockWithReason(
-            \\[ISSUES REMAIN] {} open alice-review issue(s) exist.
-            \\
-            \\Fix all issues, then exit will be allowed.
-            \\Run `tissue list -t alice-review` to see them.
-        , .{issues_after});
-    }
-
-    // No issues - alice approved
+    // Non-alice subagent - allow exit without review
+    // Main agent's stop hook will handle alice invocation
     return 0;
 }
 
-fn invokeAlice(allocator: std.mem.Allocator, task_prompt: ?[]const u8) void {
-    var prompt_buf: [8192]u8 = undefined;
-    const alice_prompt = std.fmt.bufPrint(&prompt_buf,
-        \\You are alice, an adversarial reviewer.
-        \\
-        \\The subagent's task was: {s}
-        \\
-        \\Review the work. Find problems. Use `tissue` to check what was done.
-        \\
-        \\For each problem, create an issue:
-        \\  tissue new "<problem>" -t alice-review -p <1-3>
-        \\
-        \\If no problems, create no issues.
-    , .{task_prompt orelse "(unknown)"}) catch return;
-
-    var child = std.process.Child.init(&.{ "claude", "-p", alice_prompt }, allocator);
-    _ = child.spawnAndWait() catch return;
-}
-
-fn blockWithReason(comptime fmt: []const u8, args: anytype) u8 {
-    var reason_buf: [4096]u8 = undefined;
-    const reason = std.fmt.bufPrint(&reason_buf, fmt, args) catch return 2;
-
-    var stdout_buf: [8192]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
-    const stdout = &stdout_writer.interface;
-
-    stdout.writeAll("{\"decision\":\"block\",\"reason\":\"") catch return 2;
-    escapeJsonTo(stdout, reason) catch return 2;
-    stdout.writeAll("\"}\n") catch return 2;
-    stdout.flush() catch return 2;
-
-    return 2;
-}
-
-fn escapeJsonTo(writer: anytype, data: []const u8) !void {
-    for (data) |c| {
-        switch (c) {
-            '"' => try writer.writeAll("\\\""),
-            '\\' => try writer.writeAll("\\\\"),
-            '\n' => try writer.writeAll("\\n"),
-            '\r' => try writer.writeAll("\\r"),
-            '\t' => try writer.writeAll("\\t"),
-            else => {
-                if (c < 0x20) {
-                    try writer.print("\\u{x:0>4}", .{c});
-                } else {
-                    try writer.writeByte(c);
-                }
-            },
-        }
+/// Check if this subagent is alice
+fn isAliceSubagent(subagent_type: ?[]const u8, prompt: ?[]const u8) bool {
+    // Check subagent_type first (most reliable)
+    if (subagent_type) |st| {
+        if (std.mem.indexOf(u8, st, "alice") != null) return true;
+        if (std.mem.eql(u8, st, "idle:alice")) return true;
     }
+
+    // Fall back to prompt content check
+    if (prompt) |p| {
+        // Check for alice markers in prompt
+        if (std.mem.indexOf(u8, p, "You are alice") != null) return true;
+        if (std.mem.indexOf(u8, p, "alice, an adversarial reviewer") != null) return true;
+    }
+
+    return false;
 }
 
 fn countOpenAliceReviewIssues(allocator: std.mem.Allocator) u32 {
