@@ -26,22 +26,13 @@ Iterates on the task until complete.
 
 ## Bootstrap (first run)
 
-The loop is driven by state in `.zawinski/` on topic `loop:current`. If there is no active loop state yet, initialize it once before iterating:
+Initialize loop state before iterating:
 
 ```bash
-# Initialize jwz store if needed
-[ -d .zawinski ] || jwz init
-
-# Ensure the topic exists (jwz won't auto-create topics on post)
-jwz topic new loop:current --quiet >/dev/null 2>&1 || true
-
-# If no active loop is present, seed loop:current with an initial STATE
-RUN_ID="loop-$(date -u +%s)"
-UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-jwz post loop:current -m "{\"schema\":1,\"event\":\"STATE\",\"run_id\":\"$RUN_ID\",\"updated_at\":\"$UPDATED_AT\",\"stack\":[{\"id\":\"$RUN_ID\",\"mode\":\"loop\",\"iter\":0,\"max\":10,\"prompt_file\":\"\",\"reviewed\":false,\"checkpoint_reviewed\":false}]}"
+idle init-loop
 ```
 
-If a loop is already active, do **not** overwrite it — just continue working.
+This creates the `.zawinski/` store and `loop:current` topic if needed, then posts the initial STATE frame. If a loop is already active, it leaves it alone.
 
 ## Completion Signals
 

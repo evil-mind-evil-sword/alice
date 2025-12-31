@@ -17,6 +17,7 @@ const usage =
     \\  session-start  Session start hook (loop context, agent awareness)
     \\
     \\Commands:
+    \\  init-loop      Initialize loop state (bootstrap jwz store and topic)
     \\  status         Show loop status (JSON or human-readable)
     \\  doctor         Check environment dependencies
     \\  emit           Post structured message to jwz
@@ -54,7 +55,9 @@ pub fn main() !u8 {
         return hooks.session_start.run(allocator);
     }
     // Commands
-    else if (std.mem.eql(u8, command, "status")) {
+    else if (std.mem.eql(u8, command, "init-loop")) {
+        return runInitLoop(allocator);
+    } else if (std.mem.eql(u8, command, "status")) {
         return runStatus(allocator, args[2..]);
     } else if (std.mem.eql(u8, command, "doctor")) {
         return runDoctor(allocator);
@@ -89,6 +92,149 @@ fn writeStderr(msg: []const u8) !void {
     var writer = std.fs.File.stderr().writer(&buf);
     try writer.interface.writeAll(msg);
     try writer.interface.flush();
+}
+
+fn runInitLoop(allocator: std.mem.Allocator) !u8 {
+    const store_path = ".zawinski";
+
+    // Step 1: Initialize jwz store if needed
+    const cwd = std.fs.cwd();
+    const store_exists = blk: {
+        cwd.access(store_path, .{}) catch break :blk false;
+        break :blk true;
+    };
+
+    if (!store_exists) {
+        // Get absolute path for Store.init
+        var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+        const abs_store = try cwd.realpath(".", &path_buf);
+        const full_path = try std.fs.path.join(allocator, &.{ abs_store, store_path });
+        defer allocator.free(full_path);
+
+        zawinski.store.Store.init(allocator, full_path) catch |err| switch (err) {
+            error.StoreAlreadyExists => {}, // Race condition, fine
+            else => {
+                try writeStderr("Failed to initialize jwz store\n");
+                return 1;
+            },
+        };
+        try writeStdout("Initialized .zawinski store\n");
+    }
+
+    // Step 2: Open store
+    const store_dir = zawinski.store.discoverStoreDir(allocator) catch {
+        try writeStderr("Failed to discover store\n");
+        return 1;
+    };
+    defer allocator.free(store_dir);
+
+    var store = zawinski.store.Store.open(allocator, store_dir) catch {
+        try writeStderr("Failed to open store\n");
+        return 1;
+    };
+    defer store.deinit();
+
+    // Step 3: Check if loop:current already has active state
+    const topic_exists = blk: {
+        var topic = store.fetchTopic("loop:current") catch |err| {
+            if (err == zawinski.store.StoreError.TopicNotFound) {
+                break :blk false;
+            }
+            try writeStderr("Failed to check topic\n");
+            return 1;
+        };
+        topic.deinit(allocator);
+        break :blk true;
+    };
+
+    if (topic_exists) {
+        const messages = store.listMessages("loop:current", 1) catch {
+            try writeStderr("Failed to read messages\n");
+            return 1;
+        };
+        defer {
+            for (messages) |*m| {
+                var msg = m.*;
+                msg.deinit(allocator);
+            }
+            allocator.free(messages);
+        }
+
+        // Check if there's already an active loop
+        if (messages.len > 0) {
+            var parsed = idle.parseEvent(allocator, messages[0].body) catch null;
+            defer if (parsed) |*p| p.deinit();
+
+            if (parsed) |p| {
+                if (p.state.stack.len > 0 and p.state.event == .STATE) {
+                    try writeStdout("Loop already active\n");
+                    return 0;
+                }
+            }
+        }
+    }
+
+    // Step 4: Create topic if needed (createTopic returns error.TopicExists if exists)
+    if (store.createTopic("loop:current", "Current loop state")) |topic_id| {
+        allocator.free(topic_id);
+    } else |err| switch (err) {
+        zawinski.store.StoreError.TopicExists => {},
+        else => {
+            try writeStderr("Failed to create topic\n");
+            return 1;
+        },
+    }
+
+    // Step 5: Generate run ID and post initial STATE
+    const now = std.time.timestamp();
+    var run_id_buf: [32]u8 = undefined;
+    const run_id = std.fmt.bufPrint(&run_id_buf, "loop-{d}", .{now}) catch "loop-unknown";
+
+    // Format ISO 8601 timestamp
+    var ts_buf: [32]u8 = undefined;
+    const updated_at = formatIso8601(now, &ts_buf);
+
+    // Build JSON state
+    var json_buf: [512]u8 = undefined;
+    const state_json = std.fmt.bufPrint(&json_buf,
+        \\{{"schema":1,"event":"STATE","run_id":"{s}","updated_at":"{s}","stack":[{{"id":"{s}","mode":"loop","iter":0,"max":10,"prompt_file":"","reviewed":false,"checkpoint_reviewed":false}}]}}
+    , .{ run_id, updated_at, run_id }) catch {
+        try writeStderr("Failed to format state\n");
+        return 1;
+    };
+
+    // Post the initial state
+    const sender = zawinski.store.Sender{
+        .id = "idle",
+        .name = "idle",
+        .model = null,
+        .role = "system",
+    };
+    const msg_id = store.createMessage("loop:current", null, state_json, .{ .sender = sender }) catch {
+        try writeStderr("Failed to post initial state\n");
+        return 1;
+    };
+    allocator.free(msg_id);
+
+    try writeStdout("Loop initialized\n");
+    return 0;
+}
+
+fn formatIso8601(timestamp: i64, buf: []u8) []const u8 {
+    // Convert Unix timestamp to ISO 8601 using EpochSeconds
+    const epoch: std.time.epoch.EpochSeconds = .{ .secs = @intCast(timestamp) };
+    const day_seconds = epoch.getDaySeconds();
+    const year_day = epoch.getEpochDay().calculateYearDay();
+    const month_day = year_day.calculateMonthDay();
+
+    return std.fmt.bufPrint(buf, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
+        year_day.year,
+        month_day.month.numeric(),
+        month_day.day_index + 1, // day_index is 0-based
+        day_seconds.getHoursIntoDay(),
+        day_seconds.getMinutesIntoHour(),
+        day_seconds.getSecondsIntoMinute(),
+    }) catch "1970-01-01T00:00:00Z";
 }
 
 fn runStatus(allocator: std.mem.Allocator, args: []const []const u8) !u8 {
