@@ -1,4 +1,5 @@
 #!/bin/bash
 # Session start hook wrapper
-# Routes to idle binary for session context injection
-exec "${CLAUDE_PLUGIN_ROOT}/bin/idle" session-start
+source "${CLAUDE_PLUGIN_ROOT}/hooks/ensure-binary.sh"
+ensure_idle_binary || exit 1
+exec "$IDLE_BIN" session-start
