@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.9] - 2025-12-31
+
+### Added
+
+- **`idle init-loop` command** - Bootstrap loop state from CLI
+  - Initializes `.zawinski/` store if missing
+  - Creates `loop:current` topic
+  - Posts initial STATE frame with proper schema
+  - Idempotent: detects existing active loop
+
+### Changed
+
+- **Simplified loop.md and README.md** - Bootstrap docs now reference CLI command instead of inline bash
+
+### Fixed
+
+- **Schema version in docs** - `docs/architecture.md` now correctly shows `schema: 1`
+- **Timestamp formatting** - `formatIso8601` guards against negative timestamps
+
 ## [1.4.0] - 2025-12-30
 
 ### Added
