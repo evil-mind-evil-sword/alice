@@ -349,8 +349,9 @@ jobs:
               success "Installation complete!"
               printf "\n"
               printf "Get started:\n"
-              printf "  ${BLUE}/init${NC}            # Plan a project with Alice\n"
-              printf "  ${BLUE}/loop${NC}            # Work through issues\n"
+              printf "  ${BLUE}/init${NC}            # Initialize project, plan with Alice\n"
+              printf "  ${BLUE}/loop${NC}            # Iterate on a task until complete\n"
+              printf "  ${BLUE}/cancel${NC}          # Stop the current loop\n"
               printf "\n"
               printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
           }
