@@ -47,9 +47,9 @@ if command -v claude >/dev/null 2>&1; then
     # Add marketplace (idempotent)
     claude plugin marketplace add evil-mind-evil-sword/marketplace 2>/dev/null || true
 
-    # Refresh marketplace to get latest versions
-    echo "Refreshing marketplace..."
-    claude plugin marketplace refresh 2>/dev/null || true
+    # Update marketplace to get latest versions
+    echo "Updating marketplace..."
+    claude plugin marketplace update 2>/dev/null || true
 
     # Check if already installed
     if claude plugin list 2>/dev/null | grep -q "idle@emes"; then
