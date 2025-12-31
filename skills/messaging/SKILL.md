@@ -124,7 +124,6 @@ jwz post "issue:<id>" --role <agent> \
 Key findings:
 - Finding 1
 - Finding 2
-Artifacts: .claude/plugins/idle/<agent>/<file>.md
 Next steps: <what should happen next>"
 ```
 

@@ -104,9 +104,17 @@ Before drafting:
 }
 ```
 
-## Artifact Location
+## Recording Reviews
 
-Writing artifacts: `.claude/plugins/idle/artifacts/writing/<topic>.md`
+Post review progress to jwz:
+
+```bash
+jwz post "writing:<topic>" --role alice \
+  -m "[alice] REVIEW: <topic>
+Layer: STRUCTURE | CLARITY | EVIDENCE
+Verdict: PASS | REVISE
+Notes: <specific feedback>"
+```
 
 ## Reference
 

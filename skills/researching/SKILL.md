@@ -75,14 +75,25 @@ Weight findings by source authority:
 - Flag single-source claims as lower confidence
 - Run `bibval` on academic citations before including
 
-## Artifact Location
+## Recording Findings
 
-Research artifacts: `.claude/plugins/idle/artifacts/research/<topic>.md`
+Post research artifacts to jwz for persistence and discovery:
+
+```bash
+jwz post "research:<topic>" --role alice \
+  -m "[alice] SYNTHESIS: <topic>
+Status: COMPLETE | PARTIAL
+Confidence: HIGH | MEDIUM | LOW
+Findings:
+- <finding 1>
+- <finding 2>
+Sources: <url1>, <url2>"
+```
 
 ## Discovery
 
 ```bash
 jwz search "SYNTHESIS:"
 jwz search "FINDING:"
-ls .claude/plugins/idle/artifacts/research/
+jwz read "research:<topic>"
 ```

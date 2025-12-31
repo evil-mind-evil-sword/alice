@@ -1,4 +1,3 @@
 .tissue/
-.claude/plugins/idle/
 tui/.zig-cache/
 tui/zig-out/

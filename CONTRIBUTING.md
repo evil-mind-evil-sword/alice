@@ -84,10 +84,7 @@ See `skills/messaging/SKILL.md` for a tool documentation skill or `skills/resear
 
 ## Messaging Guidelines
 
-Agents communicate via zawinski messaging (`jwz` CLI):
-
-- **Messages** are for quick status updates and notes
-- **Artifacts** (`.claude/plugins/idle/{agent}/`) are for polished outputs
+Agents communicate via zawinski messaging (`jwz` CLI). All artifacts and findings are stored in jwz, not local files.
 
 ### Topic Naming
 
