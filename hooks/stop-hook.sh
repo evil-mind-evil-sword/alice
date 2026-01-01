@@ -73,12 +73,11 @@ fi
 
 # --- No review yet → request alice review ---
 
-REASON="No alice review for this session. Run /alice to get review approval before exiting.
+REASON="No alice review for this session. Spawn the idle:alice agent to get review approval before exiting.
 
-Alice will read your conversation context and decide if the work is complete or needs fixes.
+Use: Task tool with subagent_type='idle:alice' and prompt including SESSION_ID=$SESSION_ID
 
-User context: $USER_CONTEXT_TOPIC
-Alice status: $ALICE_TOPIC"
+Alice will read your conversation context and decide if the work is complete or needs fixes."
 
 jq -n --arg reason "$REASON" '{decision: "block", reason: $reason}'
 exit 0
