@@ -1,6 +1,6 @@
 # idle
 
-Ad infinitum quality gate for Claude Code. Forces Claude to continue working until passing a review by a separate agent.
+Quality gate plugin for Claude Code. Blocks exit until work passes review by an independent agent.
 
 ## Motivation
 
@@ -17,10 +17,10 @@ Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 ```
 
 1. **Stop hook** intercepts every agent exit attempt
-2. Checks [jwz](https://github.com/femtomc/zawinski) for alice's review decision
+2. Checks [jwz](https://github.com/evil-mind-evil-sword/zawinski) for alice's review decision
 3. If no review: blocks exit, directs agent to invoke `/alice`
 4. **alice** (adversarial reviewer) examines the work
-5. Creates [tissue](https://github.com/femtomc/tissue) issues for problems found
+5. Creates [tissue](https://github.com/evil-mind-evil-sword/tissue) issues for problems found
 6. Posts decision: `COMPLETE` allows exit, `ISSUES` keeps agent working
 
 No issues = exit allowed. Issues exist = fix them first.
@@ -139,12 +139,12 @@ idle complements these tools by adding a review step before the agent exits.
 
 | Dependency | Purpose | Required |
 |------------|---------|----------|
-| [jwz](https://github.com/femtomc/zawinski) | Agent messaging and coordination | Yes |
-| [tissue](https://github.com/femtomc/tissue) | Git-native issue tracking | Yes |
+| [jwz](https://github.com/evil-mind-evil-sword/zawinski) | Agent messaging and coordination | Yes |
+| [tissue](https://github.com/evil-mind-evil-sword/tissue) | Git-native issue tracking | Yes |
 | jq | JSON parsing in hooks | Yes |
 | codex | OpenAI CLI for second opinions (reviewing skill) | Optional |
 | gemini | Google CLI for second opinions (reviewing skill) | Optional |
-| [bibval](https://github.com/femtomc/bibval) | Citation validation (bib-managing skill) | Optional |
+| [bibval](https://github.com/evil-mind-evil-sword/bibval) | Citation validation (bib-managing skill) | Optional |
 
 ## Escape Hatches
 
