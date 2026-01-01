@@ -35,10 +35,28 @@ if [[ -n "$USER_PROMPT" ]]; then
         PROMPT_DISPLAY="${PROMPT_DISPLAY:0:500}..."
     fi
 
+    # Create thread name (truncate for Discord's 100 char limit)
+    THREAD_NAME="[$PROJECT_LABEL] ${USER_PROMPT:0:60}"
+    if [[ ${#USER_PROMPT} -gt 60 ]]; then
+        THREAD_NAME="${THREAD_NAME}..."
+    fi
+
     NOTIFY_TITLE="[$PROJECT_LABEL] New task"
     NOTIFY_BODY="> $PROMPT_DISPLAY"
 
-    notify "$NOTIFY_TITLE" "$NOTIFY_BODY" 3 "speech_balloon" "$REPO_URL"
+    # Create a new forum thread and capture thread ID
+    THREAD_ID=$(notify "$NOTIFY_TITLE" "$NOTIFY_BODY" 3 "speech_balloon" "$REPO_URL" "$THREAD_NAME" "")
+
+    # Store thread ID in jwz for subsequent messages
+    if command -v jwz &>/dev/null && [[ -n "$THREAD_ID" ]]; then
+        DISCORD_TOPIC="discord:thread:$SESSION_ID"
+        jwz topic new "$DISCORD_TOPIC" 2>/dev/null || true
+        THREAD_MSG=$(jq -n \
+            --arg tid "$THREAD_ID" \
+            --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{thread_id: $tid, timestamp: $ts}')
+        jwz post "$DISCORD_TOPIC" -m "$THREAD_MSG" 2>/dev/null || true
+    fi
 fi
 
 # Store user message to jwz for alice context
