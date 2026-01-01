@@ -87,7 +87,7 @@ ntfy_post() {
     fi
 
     if [[ -n "$click_url" ]]; then
-        args+=(-H "Click: $click_url")
+        args+=(-H "Actions: view, Open Repo, $click_url")
     fi
 
     args+=(-d "$body" "$url")
