@@ -8,7 +8,7 @@ LLMs struggle to reliably evaluate their own outputs ([Huang et al., 2023](https
 
 Research on multi-agent debate suggests a path forward: models produce more accurate outputs when they critique each other ([Du et al., 2023](https://arxiv.org/abs/2305.14325); [Liang et al., 2023](https://arxiv.org/abs/2305.19118)).
 
-idle applies this idea: rather than prompting agents to review themselves, it blocks exit until an independent reviewer (alice) explicitly approves.
+idle applies this idea: rather than prompting agents to review themselves, it blocks exit until an independent reviewer (alice, a subagent) explicitly approves.
 
 ## How It Works
 
