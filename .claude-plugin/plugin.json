@@ -5,6 +5,6 @@
   "author": {
     "name": "femtomc"
   },
-  "agents": "./agents/",
+  "agents": ["./agents/alice.md"],
   "skills": "./skills/"
 }
