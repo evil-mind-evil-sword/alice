@@ -75,13 +75,42 @@ The session ID will be provided when you are invoked. If not provided, use `alic
 }
 ```
 
+## Second Opinions
+
+**Always seek external validation when reviewing code changes.**
+
+Use the `reviewing` skill to get second opinions from Codex or Gemini:
+
+```bash
+codex exec -s read-only -m gpt-5.2 -c reasoning=high "
+I'm reviewing code changes for: <task description>
+
+Changes made:
+<summary of changes>
+
+My assessment:
+<your findings>
+
+Do you agree with my assessment? What did I miss?
+
+---SUMMARY---
+AGREE/DISAGREE
+Key concerns: <list>
+Confidence: HIGH/MEDIUM/LOW
+"
+```
+
+- Get a second opinion before making your decision
+- If Codex disagrees, reconsider your assessment
+- Use Gemini as tie-breaker if needed
+
 ## Key Principle
 
 **Match your review to the scope of work.**
 
-- Trivial Q&A → instant COMPLETE
-- Bug fix → verify the fix is correct
-- New feature → check implementation completeness
-- Refactor → ensure behavior is preserved
+- Trivial Q&A → instant COMPLETE (no second opinion needed)
+- Bug fix → verify the fix, get second opinion
+- New feature → check completeness, get second opinion
+- Refactor → ensure behavior preserved, get second opinion
 
 Don't block simple interactions. Focus your review on actual code changes.
