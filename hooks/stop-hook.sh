@@ -178,20 +178,24 @@ fi
 
 REASON="No alice review for this session. You must spawn alice before exiting.
 
-IMPORTANT: Do NOT summarize your work or justify your actions to alice. She forms her own judgment.
-
-Invoke alice with EXACTLY this prompt (no additions):
+Invoke alice with this prompt format:
 
 ---
 SESSION_ID=$SESSION_ID
+
+Changes since last review:
+- <file>: <what changed>
+- <file>: <what changed>
 ---
 
-Alice will:
-1. Read the user's original prompt transcript from jwz
-2. Examine the codebase changes independently
-3. Decide if the USER'S request (not your interpretation) was satisfied
+RULES:
+- List changes as facts only (file + what), no justifications
+- Do NOT summarize intent or explain why
+- Do NOT editorialize or argue your case
+- Alice forms her own judgment from the user's prompt transcript
 
-Do not attempt to influence alice's judgment. She works for the user, not you."
+Alice will read jwz topic 'user:context:$SESSION_ID' for the user's actual request
+and evaluate whether YOUR changes satisfy THE USER's desires (not your interpretation)."
 
 # Post pending review notification (to thread if exists)
 NOTIFY_TITLE="[$PROJECT_LABEL] Awaiting Review"
