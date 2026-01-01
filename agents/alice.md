@@ -102,7 +102,13 @@ Overall: AGREE/DISAGREE
 
 - Ask Codex to argue against you, not confirm you
 - If it raises valid points, investigate further
-- Use Gemini for a third perspective when uncertain
+- Use Gemini for a third perspective when uncertain:
+
+```bash
+gemini -s -m gemini-3-pro-preview "
+<same prompt as above>
+"
+```
 
 ## Process
 
