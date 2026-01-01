@@ -27,6 +27,12 @@ if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then
     jwz topic new "$USER_TOPIC" 2>/dev/null || true
     jwz topic new "$ALICE_TOPIC" 2>/dev/null || true
 
+    # Reset alice status - new prompt requires new review
+    RESET_MSG=$(jq -n \
+        --arg ts "$TIMESTAMP" \
+        '{decision: "PENDING", summary: "New user prompt received, review required", timestamp: $ts}')
+    jwz post "$ALICE_TOPIC" -m "$RESET_MSG" 2>/dev/null || true
+
     # Create message payload
     MSG=$(jq -n \
         --arg prompt "$USER_PROMPT" \
