@@ -1,11 +1,15 @@
 #!/bin/bash
 # idle UserPromptSubmit hook
 # Captures user messages and stores them in jwz for alice context
+# Posts new task notification to ntfy
 #
 # Output: JSON (approve to continue)
 # Exit 0 always
 
 set -euo pipefail
+
+# Source shared utilities
+source "${BASH_SOURCE%/*}/utils.sh"
 
 # Read hook input from stdin
 INPUT=$(cat)
@@ -16,6 +20,25 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "default"')
 USER_PROMPT=$(echo "$INPUT" | jq -r '.prompt // ""')
 
 cd "$CWD"
+
+# Get project info
+PROJECT_NAME=$(get_project_name "$CWD")
+GIT_BRANCH=$(get_git_branch "$CWD")
+PROJECT_LABEL="$PROJECT_NAME"
+[[ -n "$GIT_BRANCH" ]] && PROJECT_LABEL="$PROJECT_NAME:$GIT_BRANCH"
+
+# Post to ntfy (truncate long prompts)
+if [[ -n "$USER_PROMPT" ]]; then
+    PROMPT_PREVIEW="$USER_PROMPT"
+    if [[ ${#PROMPT_PREVIEW} -gt 200 ]]; then
+        PROMPT_PREVIEW="${PROMPT_PREVIEW:0:200}..."
+    fi
+
+    NTFY_TITLE="[$PROJECT_LABEL] New task"
+    NTFY_BODY="$PROMPT_PREVIEW"
+
+    ntfy_post "$NTFY_TITLE" "$NTFY_BODY" 3 "speech_balloon"
+fi
 
 # Store user message to jwz for alice context
 if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then

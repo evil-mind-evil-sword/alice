@@ -1,11 +1,15 @@
 #!/bin/bash
 # idle STOP hook
 # Gates exit on alice review - alice makes the judgment call
+# Posts block/approve notifications to ntfy
 #
 # Output: JSON with decision (block/approve) and reason
 # Exit 0 for both - decision field controls behavior
 
 set -euo pipefail
+
+# Source shared utilities
+source "${BASH_SOURCE%/*}/utils.sh"
 
 # Read hook input from stdin
 INPUT=$(cat)
@@ -23,8 +27,30 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "default"')
 
 cd "$CWD"
 
+# Get project info
+PROJECT_NAME=$(get_project_name "$CWD")
+GIT_BRANCH=$(get_git_branch "$CWD")
+PROJECT_LABEL="$PROJECT_NAME"
+[[ -n "$GIT_BRANCH" ]] && PROJECT_LABEL="$PROJECT_NAME:$GIT_BRANCH"
+
 ALICE_TOPIC="alice:status:$SESSION_ID"
 USER_CONTEXT_TOPIC="user:context:$SESSION_ID"
+
+# --- Get user's original request for context ---
+
+USER_REQUEST=""
+if command -v jwz &>/dev/null; then
+    USER_RAW=$(jwz read "$USER_CONTEXT_TOPIC" --json 2>/dev/null | jq '.[-1].body // empty' || echo "")
+    if [[ -n "$USER_RAW" ]]; then
+        USER_REQUEST=$(echo "$USER_RAW" | jq -r '.prompt // ""' 2>/dev/null || echo "")
+    fi
+fi
+
+# Truncate user request for notifications
+USER_REQUEST_PREVIEW="$USER_REQUEST"
+if [[ ${#USER_REQUEST_PREVIEW} -gt 100 ]]; then
+    USER_REQUEST_PREVIEW="${USER_REQUEST_PREVIEW:0:100}..."
+fi
 
 # --- Check: Has alice reviewed this session? ---
 
@@ -52,6 +78,14 @@ if [[ "$ALICE_DECISION" == "COMPLETE" || "$ALICE_DECISION" == "APPROVED" ]]; the
     REASON="alice approved"
     [[ -n "$ALICE_MSG_ID" ]] && REASON="$REASON (msg: $ALICE_MSG_ID)"
     [[ -n "$ALICE_SUMMARY" ]] && REASON="$REASON - $ALICE_SUMMARY"
+
+    # Post approval to ntfy
+    NTFY_TITLE="[$PROJECT_LABEL] ✓ Alice approved"
+    NTFY_BODY="Task: $USER_REQUEST_PREVIEW
+
+$ALICE_SUMMARY"
+    ntfy_post "$NTFY_TITLE" "$NTFY_BODY" 3 "white_check_mark"
+
     jq -n --arg reason "$REASON" '{decision: "approve", reason: $reason}'
     exit 0
 fi
@@ -67,6 +101,18 @@ $ALICE_SUMMARY"
     [[ -n "$ALICE_MESSAGE" ]] && REASON="$REASON
 
 alice says: $ALICE_MESSAGE"
+
+    # Post block to ntfy (high priority)
+    NTFY_TITLE="[$PROJECT_LABEL] ✗ Alice blocked"
+    NTFY_BODY="Task: $USER_REQUEST_PREVIEW
+
+$ALICE_SUMMARY"
+    [[ -n "$ALICE_MESSAGE" ]] && NTFY_BODY="$NTFY_BODY
+
+Alice says:
+$ALICE_MESSAGE"
+    ntfy_post "$NTFY_TITLE" "$NTFY_BODY" 4 "x"
+
     jq -n --arg reason "$REASON" '{decision: "block", reason: $reason}'
     exit 0
 fi
@@ -78,6 +124,13 @@ REASON="No alice review for this session. Spawn the idle:alice agent to get revi
 Use: Task tool with subagent_type='idle:alice' and prompt including SESSION_ID=$SESSION_ID
 
 Alice will read your conversation context and decide if the work is complete or needs fixes."
+
+# Post pending review to ntfy
+NTFY_TITLE="[$PROJECT_LABEL] ⏳ Awaiting alice review"
+NTFY_BODY="Task: $USER_REQUEST_PREVIEW
+
+Agent attempting to exit without alice review."
+ntfy_post "$NTFY_TITLE" "$NTFY_BODY" 3 "hourglass"
 
 jq -n --arg reason "$REASON" '{decision: "block", reason: $reason}'
 exit 0
