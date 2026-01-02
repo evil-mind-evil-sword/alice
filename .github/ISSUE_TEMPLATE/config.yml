@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Features, Bug Reports, Questions
+    url: https://github.com/evil-mind-evil-sword/idle/discussions/new/choose
+    about: Please start a discussion first. Actionable items will be converted to issues by maintainers.
