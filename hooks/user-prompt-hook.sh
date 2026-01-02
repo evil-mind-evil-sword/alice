@@ -18,6 +18,7 @@ INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "default"')
 USER_PROMPT=$(echo "$INPUT" | jq -r '.prompt // ""')
+IDLE_MODE_MSG=""
 
 cd "$CWD"
 
