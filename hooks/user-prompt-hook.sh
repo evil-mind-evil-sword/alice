@@ -59,14 +59,24 @@ if [[ -n "$USER_PROMPT" ]]; then
     fi
 fi
 
-# --- Parse #gate command (opt-in to alice review) ---
+# --- Parse #idle:on / #idle:off commands ---
 
-if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]] && [[ "$USER_PROMPT" =~ ^#[Gg][Aa][Tt][Ee]([[:space:]]|$) ]]; then
+if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then
     REVIEW_STATE_TOPIC="review:state:$SESSION_ID"
-    jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
-    STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-        '{enabled: true, timestamp: $ts}')
-    jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" 2>/dev/null || true
+
+    if [[ "$USER_PROMPT" =~ ^#[Ii][Dd][Ll][Ee]:[Oo][Nn]([[:space:]]|$) ]]; then
+        # Turn on review
+        jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
+        STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{enabled: true, timestamp: $ts}')
+        jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" 2>/dev/null || true
+    elif [[ "$USER_PROMPT" =~ ^#[Ii][Dd][Ll][Ee]:[Oo][Ff][Ff]([[:space:]]|$) ]]; then
+        # Turn off review
+        jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
+        STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{enabled: false, timestamp: $ts}')
+        jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" 2>/dev/null || true
+    fi
 fi
 
 # Store user message to jwz for alice context
