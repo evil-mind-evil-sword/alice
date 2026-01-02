@@ -71,6 +71,7 @@ REVIEW_STATE_TOPIC="review:state:$SESSION_ID"
 
 if ! command -v jwz &>/dev/null; then
     # Fail open with notification - review system can't function without jwz
+    printf "idle: WARNING: jwz unavailable - review system bypassed\n" >&2
     notify "[$PROJECT_LABEL] Review Degraded" "jwz unavailable - review system bypassed" 4 "warning" "$REPO_URL" "" "$DISCORD_THREAD_ID"
     jq -n '{decision: "approve", reason: "jwz unavailable - review system bypassed"}'
     exit 0
@@ -95,6 +96,7 @@ if [[ $JWZ_EXIT -ne 0 ]]; then
     else
         # Unknown jwz error - fail open with notification
         ERR_MSG=$(cat "$JWZ_TMPFILE")
+        printf "idle: WARNING: jwz error - review system bypassed: %s\n" "$ERR_MSG" >&2
         notify "[$PROJECT_LABEL] Review Degraded" "jwz error: $ERR_MSG" 4 "warning" "$REPO_URL" "" "$DISCORD_THREAD_ID"
         jq -n --arg err "$ERR_MSG" '{decision: "approve", reason: ("jwz error - review bypassed: " + $err)}'
         exit 0
@@ -103,9 +105,11 @@ fi
 
 # jwz succeeded - parse the response directly from file
 # Note: don't use // with booleans as jq treats false as falsy
-REVIEW_ENABLED_RAW=$(jq -r '.[0].body | fromjson | .enabled' "$JWZ_TMPFILE" 2>/dev/null)
+# Use || echo "" to prevent set -e from crashing on jq failure
+REVIEW_ENABLED_RAW=$(jq -r '.[0].body | fromjson | .enabled' "$JWZ_TMPFILE" 2>/dev/null || echo "")
 if [[ -z "$REVIEW_ENABLED_RAW" || "$REVIEW_ENABLED_RAW" == "null" ]]; then
     # Can't parse enabled field - fail open with notification
+    printf "idle: WARNING: Failed to parse review state - review bypassed\n" >&2
     notify "[$PROJECT_LABEL] Review Degraded" "Failed to parse review state" 4 "warning" "$REPO_URL" "" "$DISCORD_THREAD_ID"
     jq -n '{decision: "approve", reason: "Failed to parse review state - review bypassed"}'
     exit 0
