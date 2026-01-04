@@ -28,10 +28,16 @@ if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then
         jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
         STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
             '{enabled: true, timestamp: $ts}')
-        if jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" 2>/dev/null; then
+        POST_ERR=""
+        if POST_ERR=$(jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" 2>&1); then
             IDLE_MODE_MSG="idle: review mode ON"
         else
-            IDLE_MODE_MSG="idle: WARNING - failed to enable review mode"
+            # Include error details in warning
+            if [[ -n "$POST_ERR" ]]; then
+                IDLE_MODE_MSG="idle: WARNING - failed to enable review mode: $POST_ERR"
+            else
+                IDLE_MODE_MSG="idle: WARNING - failed to enable review mode (jwz post exited non-zero with no output)"
+            fi
         fi
     fi
 fi
