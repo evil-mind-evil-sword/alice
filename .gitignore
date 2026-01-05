@@ -1,4 +1,7 @@
 .tissue/
+.zawinski/
+.zig-cache/
+zig-out/
 tui/.zig-cache/
 tui/zig-out/
 bin/idle
