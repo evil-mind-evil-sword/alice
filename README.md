@@ -43,8 +43,6 @@ Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 5. Creates [tissue](https://github.com/evil-mind-evil-sword/tissue) issues for problems found
 6. Posts decision: `COMPLETE` allows exit, `ISSUES` keeps agent working
 
-No issues = exit allowed. Issues exist = fix them first.
-
 ## Architecture
 
 ```
