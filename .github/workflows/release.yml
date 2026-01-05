@@ -56,8 +56,8 @@ jobs:
 
           # Remove path dependencies before fetching URL dependencies
           # (zig fetch --save with existing path deps puts URL in .path field incorrectly)
-          sed -i 's/\.zawinski = \.{ \.path = "[^"]*" },//' build.zig.zon
-          sed -i 's/\.tissue = \.{ \.path = "[^"]*" },//' build.zig.zon
+          # Use -i.bak for portability (BSD sed on macOS requires suffix argument)
+          sed -i.bak -e 's/\.zawinski = \.{ \.path = "[^"]*" },//' -e 's/\.tissue = \.{ \.path = "[^"]*" },//' build.zig.zon && rm -f build.zig.zon.bak
 
           # Fetch and save dependencies (creates .url and .hash fields)
           zig fetch --save=zawinski "https://github.com/evil-mind-evil-sword/zawinski/archive/refs/tags/${ZAWINSKI_VERSION}.tar.gz"
