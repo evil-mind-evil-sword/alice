@@ -157,9 +157,9 @@ You are running with the **idle** plugin.
 | codex | $CODEX_STATUS | External model queries |
 | gemini | $GEMINI_STATUS | External model queries |
 
-### Alice (Adversarial Reviewer)
+### Review Mode
 
-Add \`#idle\` to any prompt to enable alice review. Alice spawns before you finish responding to verify your work satisfies the user's request. Review is per-prompt (resets after approval).
+The user may add \`#idle\` to a prompt to enable review mode. When active, you will be asked to invoke \`idle:alice\` for adversarial review before completing your response. No need to remember this—you will be prompted when required.
 
 ### Available Skills
 
