@@ -47,12 +47,14 @@ idle applies this idea: rather than prompting agents to review themselves, it bl
 Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 ```
 
-1. **Stop hook** intercepts every agent exit attempt
-2. `#idle` at start of prompt enables review via [jwz](https://github.com/evil-mind-evil-sword/zawinski)
-3. If review enabled but no approval: blocks exit, agent must spawn alice
-4. **alice** (adversarial reviewer) examines the work
-5. Creates [tissue](https://github.com/evil-mind-evil-sword/tissue) issues for problems found
-6. Posts decision: `COMPLETE` allows exit, `ISSUES` keeps agent working
+- `#idle` at start of prompt enables review (using session state stored via [jwz](https://github.com/evil-mind-evil-sword/zawinski))
+- **Stop hook** runs on every agent "stop" attempt (when Claude Code stops and waits for you)
+    - If review enabled but no approval: blocks exit, agent must spawn alice
+    - **alice** (adversarial reviewer) examines the work
+        - Creates [tissue](https://github.com/evil-mind-evil-sword/tissue) issues for problems found
+        - Posts decision: `COMPLETE` allows exit, `ISSUES` keeps agent working
+    - The loop repeats until Alice is satisfied. 
+- Otherwise, Claude Code operates normally.
 
 ## Architecture
 
