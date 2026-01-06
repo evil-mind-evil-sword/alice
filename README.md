@@ -16,6 +16,8 @@ This installs:
 - `jq` - JSON parsing (if needed)
 - The idle plugin (registered with Claude Code)
 
+Those other two binaries (`jwz` and `tissue`) are small Zig programs which allow Claude Code to store issues, messages, retain state (all in JSONL + SQLite, like `beads`) -- and are used by `idle` to track the state required to enforce the reviewer pattern (as well as giving Claude Code a place to store issues, research notes, etc). It's all kind of built in to the plugin, and my goal here is to make it easy to install these and get started (meaning: the goal is you shouldn't have to think about them!)
+
 ## Motivation
 
 LLMs struggle to reliably evaluate their own outputs ([Huang et al., 2023](https://arxiv.org/abs/2310.01798)). A model asked to verify its work tends to confirm rather than critique. This creates a gap in agentic coding workflows—agents can exit believing they've completed a task when issues remain.
