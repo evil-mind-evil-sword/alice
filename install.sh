@@ -2,7 +2,7 @@
 set -e
 
 # idle installer
-# Usage: curl -fsSL https://github.com/evil-mind-evil-sword/idle/releases/latest/download/install.sh | sh
+# Usage: curl -fsSL https://evil-mind-evil-sword.github.io/releases/idle/install.sh | sh
 
 echo "Installing idle plugin..."
 echo ""
