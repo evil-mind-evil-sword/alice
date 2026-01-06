@@ -53,7 +53,7 @@ Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
     - **alice** (adversarial reviewer) examines the work
         - Creates [tissue](https://github.com/evil-mind-evil-sword/tissue) issues for problems found
         - Posts decision: `COMPLETE` allows exit, `ISSUES` keeps agent working
-    - The loop repeats until Alice is satisfied. 
+    - The loop repeats until Alice is satisfied that the main agent _has satisfied your prompt task_. Alice is directed to ignore the main agent's attempts to convince Alice that they've addressed the task, and instead take an independent perspective.
 - Otherwise, Claude Code operates normally.
 
 ## Architecture
