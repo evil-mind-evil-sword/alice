@@ -26,7 +26,17 @@ cd "$CWD"
 if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then
     REVIEW_STATE_TOPIC="review:state:$SESSION_ID"
 
-    if [[ "$USER_PROMPT" =~ ^#[Ii][Dd][Ll][Ee]([[:space:]]|$) ]]; then
+    if [[ "$USER_PROMPT" =~ ^#[Ii][Dd][Ll][Ee]:[Ss][Tt][Oo][Pp]([[:space:]]|$) ]]; then
+        # Turn off review mode and clean up state
+        jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
+        STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{enabled: false, timestamp: $ts, manually_stopped: true}')
+        if jwz post "$REVIEW_STATE_TOPIC" -m "$STATE_MSG" >/dev/null 2>&1; then
+            IDLE_MODE_MSG="idle: review mode OFF (manually stopped)"
+        else
+            IDLE_MODE_MSG="idle: WARNING - failed to disable review mode"
+        fi
+    elif [[ "$USER_PROMPT" =~ ^#[Ii][Dd][Ll][Ee]([[:space:]]|$) ]]; then
         # Turn on review for this prompt
         jwz topic new "$REVIEW_STATE_TOPIC" 2>/dev/null || true
         STATE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \

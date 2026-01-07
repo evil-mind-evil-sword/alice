@@ -259,6 +259,99 @@ else
 fi
 
 # ============================================================================
+# TEST 9: #idle:stop disables review mode
+# ============================================================================
+echo ""
+echo "--- Test 9: #idle:stop disables review mode ---"
+
+if command -v jwz &>/dev/null; then
+    JWZ_STOP_DIR="$TEMP_DIR/jwz-stop"
+    mkdir -p "$JWZ_STOP_DIR"
+    cd "$JWZ_STOP_DIR"
+    jwz init 2>/dev/null || true
+
+    SESSION="test-idle-stop"
+    USER_HOOK="$SCRIPT_DIR/../hooks/user-prompt-hook.sh"
+
+    # First enable review
+    echo "{\"session_id\": \"$SESSION\", \"cwd\": \"$JWZ_STOP_DIR\", \"prompt\": \"#idle Do something\"}" | bash "$USER_HOOK" >/dev/null 2>&1
+
+    # Verify it's enabled (use tostring to avoid jq's // treating false as falsy)
+    ENABLED=$(jwz read "review:state:$SESSION" --json 2>/dev/null | jq -r '.[0].body | fromjson | .enabled | tostring')
+    if [[ "$ENABLED" == "true" ]]; then
+        echo "✓ Review enabled after #idle"
+        ((pass++)) || true
+    else
+        echo "✗ Review not enabled after #idle (got: $ENABLED)"
+        ((fail++)) || true
+    fi
+
+    # Now disable with #idle:stop
+    echo "{\"session_id\": \"$SESSION\", \"cwd\": \"$JWZ_STOP_DIR\", \"prompt\": \"#idle:stop\"}" | bash "$USER_HOOK" >/dev/null 2>&1
+
+    # Verify it's disabled
+    ENABLED=$(jwz read "review:state:$SESSION" --json 2>/dev/null | jq -r '.[0].body | fromjson | .enabled | tostring')
+    if [[ "$ENABLED" == "false" ]]; then
+        echo "✓ Review disabled after #idle:stop"
+        ((pass++)) || true
+    else
+        echo "✗ Review not disabled after #idle:stop (got: $ENABLED)"
+        ((fail++)) || true
+    fi
+
+    # Test case-insensitive #IDLE:STOP
+    echo "{\"session_id\": \"$SESSION\", \"cwd\": \"$JWZ_STOP_DIR\", \"prompt\": \"#idle enable\"}" | bash "$USER_HOOK" >/dev/null 2>&1
+    echo "{\"session_id\": \"$SESSION\", \"cwd\": \"$JWZ_STOP_DIR\", \"prompt\": \"#IDLE:STOP\"}" | bash "$USER_HOOK" >/dev/null 2>&1
+    ENABLED=$(jwz read "review:state:$SESSION" --json 2>/dev/null | jq -r '.[0].body | fromjson | .enabled | tostring')
+    if [[ "$ENABLED" == "false" ]]; then
+        echo "✓ #IDLE:STOP works (case-insensitive)"
+        ((pass++)) || true
+    else
+        echo "✗ #IDLE:STOP not recognized (got: $ENABLED)"
+        ((fail++)) || true
+    fi
+else
+    echo "⊘ Skipping jwz tests (jwz not available)"
+fi
+
+# ============================================================================
+# TEST 10: Session start cleans up stale review state
+# ============================================================================
+echo ""
+echo "--- Test 10: Session start cleans up stale review state ---"
+
+if command -v jwz &>/dev/null; then
+    JWZ_CLEANUP_DIR="$TEMP_DIR/jwz-cleanup"
+    mkdir -p "$JWZ_CLEANUP_DIR"
+    cd "$JWZ_CLEANUP_DIR"
+    jwz init 2>/dev/null || true
+
+    SESSION="test-session-cleanup"
+    START_HOOK="$SCRIPT_DIR/../hooks/session-start-hook.sh"
+
+    # Simulate stale review state (enabled: true from a previous session)
+    jwz topic new "review:state:$SESSION" 2>/dev/null || true
+    jwz post "review:state:$SESSION" -m '{"enabled": true, "timestamp": "2024-01-01T00:00:00Z"}' >/dev/null 2>&1
+
+    # Run session start hook
+    echo "{\"session_id\": \"$SESSION\", \"cwd\": \"$JWZ_CLEANUP_DIR\"}" | bash "$START_HOOK" >/dev/null 2>&1
+
+    # Verify review state was cleaned up (use tostring to avoid jq's // treating false as falsy)
+    ENABLED=$(jwz read "review:state:$SESSION" --json 2>/dev/null | jq -r '.[0].body | fromjson | .enabled | tostring')
+    CLEANUP=$(jwz read "review:state:$SESSION" --json 2>/dev/null | jq -r '.[0].body | fromjson | .session_start_cleanup | tostring')
+
+    if [[ "$ENABLED" == "false" && "$CLEANUP" == "true" ]]; then
+        echo "✓ Session start cleaned up stale review state"
+        ((pass++)) || true
+    else
+        echo "✗ Stale review state not cleaned up (enabled=$ENABLED, cleanup=$CLEANUP)"
+        ((fail++)) || true
+    fi
+else
+    echo "⊘ Skipping jwz tests (jwz not available)"
+fi
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 echo ""

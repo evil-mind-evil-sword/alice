@@ -127,6 +127,26 @@ fi
 # Re-enable ERR trap
 trap 'echo "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"idle: hook error\"}}"; exit 0' ERR
 
+# --- Clean up stale review state from previous session ---
+# When a session starts (including resume), any previous review state is stale.
+# The user must explicitly re-enable with #idle if they want review.
+REVIEW_CLEANED=""
+if [[ "$JWZ_AVAILABLE" = "true" ]]; then
+    REVIEW_STATE_TOPIC="review:state:$SESSION_ID"
+
+    # Check if review was previously enabled
+    PREV_STATE=$(jwz read "$REVIEW_STATE_TOPIC" --json 2>/dev/null | jq -r '.[0].body | fromjson | .enabled // false' 2>/dev/null || echo "false")
+
+    if [[ "$PREV_STATE" == "true" ]]; then
+        # Clean up stale state
+        CLEANUP_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{enabled: false, timestamp: $ts, session_start_cleanup: true}')
+        if jwz post "$REVIEW_STATE_TOPIC" -m "$CLEANUP_MSG" >/dev/null 2>&1; then
+            REVIEW_CLEANED="Previous review state cleaned up (was enabled). Use #idle to re-enable."
+        fi
+    fi
+fi
+
 # Build available skills list
 SKILLS=""
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
@@ -161,6 +181,8 @@ You are running with the **idle** plugin.
 
 The user may add \`#idle\` to a prompt to enable review mode. When active, you will be asked to invoke \`idle:alice\` for adversarial review before completing your response. No need to remember this—you will be prompted when required.
 
+Use \`#idle:stop\` to disable review mode and allow clean exit.
+
 ### Available Skills
 
 $([ -n "$SKILLS" ] && echo "$SKILLS" || echo "None detected")
@@ -185,10 +207,20 @@ if [[ "$JWZ_AVAILABLE" = "true" ]]; then
     jwz post "$TRACE_TOPIC" -m "$TRACE_EVENT" >/dev/null 2>&1 || true
 fi
 
-# Output JSON with context and optional systemMessage for health issues
+# Output JSON with context and optional systemMessage for health issues or cleanup
+SYSTEM_MSG=""
 if [[ -n "$HEALTH_ISSUES" ]]; then
-    # Format health issues for display (use printf for actual newlines)
     SYSTEM_MSG=$(printf "idle health check failed:\n%s" "$HEALTH_ISSUES")
+fi
+if [[ -n "$REVIEW_CLEANED" ]]; then
+    if [[ -n "$SYSTEM_MSG" ]]; then
+        SYSTEM_MSG=$(printf "%s\n\n%s" "$SYSTEM_MSG" "$REVIEW_CLEANED")
+    else
+        SYSTEM_MSG="$REVIEW_CLEANED"
+    fi
+fi
+
+if [[ -n "$SYSTEM_MSG" ]]; then
     jq -n \
         --arg context "$CONTEXT" \
         --arg msg "$SYSTEM_MSG" \
