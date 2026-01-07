@@ -178,6 +178,87 @@ else
 fi
 
 # ============================================================================
+# TEST 7: Circuit breaker trips after 3 blocks on same review
+# ============================================================================
+echo ""
+echo "--- Test 7: Circuit breaker trips after repeated blocks ---"
+
+if command -v jwz &>/dev/null; then
+    JWZ_CIRCUIT_DIR="$TEMP_DIR/jwz-circuit"
+    mkdir -p "$JWZ_CIRCUIT_DIR"
+    cd "$JWZ_CIRCUIT_DIR"
+    jwz init 2>/dev/null || true
+
+    SESSION="test-circuit-breaker"
+
+    # First, post alice ISSUES and get the auto-generated ID
+    jwz topic new "alice:status:$SESSION" 2>/dev/null || true
+    jwz post "alice:status:$SESSION" -m '{"decision": "ISSUES", "summary": "Test issue"}' 2>/dev/null || true
+    REVIEW_ID=$(jwz read "alice:status:$SESSION" --json 2>/dev/null | jq -r '.[0].id // ""')
+
+    if [[ -n "$REVIEW_ID" ]]; then
+        # Set up state showing we've already blocked twice on this review ID
+        # Use jq to properly construct JSON with variable expansion
+        STATE_MSG=$(jq -n --arg id "$REVIEW_ID" '{enabled: true, timestamp: "2024-01-01T00:00:00Z", last_blocked_review_id: $id, block_count: 2}')
+        jwz topic new "review:state:$SESSION" 2>/dev/null || true
+        jwz post "review:state:$SESSION" -m "$STATE_MSG" 2>/dev/null || true
+
+        # Third block on same review should trip circuit breaker and approve
+        test_case "Circuit breaker trips after 3 blocks" "approve" '{
+          "session_id": "'"$SESSION"'",
+          "cwd": "'"$JWZ_CIRCUIT_DIR"'",
+          "stop_hook_active": false
+        }'
+
+        # Verify warning was posted (need to cd back to circuit dir for store access)
+        cd "$JWZ_CIRCUIT_DIR"
+        WARNINGS=$(jwz read "idle:warnings:$SESSION" --json 2>/dev/null | jq -r '.[0].body // ""' || echo "")
+        if echo "$WARNINGS" | grep -q "Circuit breaker"; then
+            echo "✓ Circuit breaker warning was posted"
+            ((pass++)) || true
+        else
+            echo "✗ Circuit breaker warning not found"
+            ((fail++)) || true
+        fi
+    else
+        echo "⊘ Skipping circuit breaker test (couldn't get review ID from jwz)"
+    fi
+else
+    echo "⊘ Skipping jwz tests (jwz not available)"
+fi
+
+# ============================================================================
+# TEST 8: Circuit breaker trips with empty alice ID
+# ============================================================================
+echo ""
+echo "--- Test 8: Circuit breaker with no alice review ID ---"
+
+if command -v jwz &>/dev/null; then
+    JWZ_NOID_DIR="$TEMP_DIR/jwz-noid"
+    mkdir -p "$JWZ_NOID_DIR"
+    cd "$JWZ_NOID_DIR"
+    jwz init 2>/dev/null || true
+
+    SESSION="test-no-id-breaker"
+
+    # Enable review but don't post any alice status (or post without decision)
+    STATE_MSG=$(jq -n '{enabled: true, timestamp: "2024-01-01", no_id_block_count: 2}')
+    jwz topic new "review:state:$SESSION" 2>/dev/null || true
+    jwz post "review:state:$SESSION" -m "$STATE_MSG" 2>/dev/null || true
+
+    # Don't create alice:status topic at all - simulates missing alice review
+
+    # Third block with no ID should trip circuit breaker
+    test_case "Circuit breaker trips with no alice ID" "approve" '{
+      "session_id": "'"$SESSION"'",
+      "cwd": "'"$JWZ_NOID_DIR"'",
+      "stop_hook_active": false
+    }'
+else
+    echo "⊘ Skipping jwz tests (jwz not available)"
+fi
+
+# ============================================================================
 # SUMMARY
 # ============================================================================
 echo ""

@@ -11,6 +11,12 @@
 # via `idle warnings` CLI command. This prioritizes availability over strict gating.
 #
 # Only alice review decisions block - NOT infrastructure issues.
+#
+# CIRCUIT BREAKER:
+# To prevent infinite loops when an agent fails to re-invoke alice after being blocked,
+# we track how many times we've blocked on the same review ID. After 3 blocks on the
+# same stale review, we fail open with a warning. This prevents stack overflows and
+# runaway loops while still enforcing review for cooperative agents.
 
 # Critical: Always output valid JSON, even on error. Fail open on error.
 trap 'jq -n "{decision: \"approve\", reason: \"idle: hook error - failing open\"}"; exit 0' ERR
@@ -42,8 +48,8 @@ emit_warning_and_approve() {
     # Layer 2: jwz persistence (best effort - may fail if jwz is the problem)
     local ts
     ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    jwz topic new "$WARNINGS_TOPIC" 2>/dev/null || true
-    jwz post "$WARNINGS_TOPIC" -m "$(jq -n --arg w "$msg" --arg ts "$ts" '{warning: $w, timestamp: $ts}')" 2>/dev/null || true
+    jwz topic new "$WARNINGS_TOPIC" >/dev/null 2>&1 || true
+    jwz post "$WARNINGS_TOPIC" -m "$(jq -n --arg w "$msg" --arg ts "$ts" '{warning: $w, timestamp: $ts}')" >/dev/null 2>&1 || true
 
     # Layer 3: approve with additionalContext for inline display
     jq -n --arg reason "$reason" --arg msg "⚠️ idle: $msg" '{
@@ -144,6 +150,86 @@ if [[ "$ALICE_DECISION" == "COMPLETE" || "$ALICE_DECISION" == "APPROVED" ]]; the
 
     jq -n --arg reason "$REASON" '{decision: "approve", reason: $reason}'
     exit 0
+fi
+
+# --- Circuit breaker: detect stale review loops ---
+
+# Read circuit breaker state from review:state
+LAST_BLOCKED_ID=$(jq -r '.[0].body | fromjson | .last_blocked_review_id // ""' "$JWZ_TMPFILE" 2>/dev/null || echo "")
+BLOCK_COUNT=$(jq -r '.[0].body | fromjson | .block_count // 0' "$JWZ_TMPFILE" 2>/dev/null || echo "0")
+NO_ID_BLOCK_COUNT=$(jq -r '.[0].body | fromjson | .no_id_block_count // 0' "$JWZ_TMPFILE" 2>/dev/null || echo "0")
+# Ensure counters are numeric
+[[ "$BLOCK_COUNT" =~ ^[0-9]+$ ]] || BLOCK_COUNT=0
+[[ "$NO_ID_BLOCK_COUNT" =~ ^[0-9]+$ ]] || NO_ID_BLOCK_COUNT=0
+
+MAX_BLOCKS=3
+
+# Helper to trip circuit breaker and disable review
+trip_circuit_breaker() {
+    local msg="$1"
+    local reason="$2"
+
+    # Disable review state so user must explicitly re-enable with #idle
+    DISABLE_MSG=$(jq -n --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        '{enabled: false, timestamp: $ts, circuit_breaker_tripped: true}')
+    jwz post "$REVIEW_STATE_TOPIC" -m "$DISABLE_MSG" >/dev/null 2>&1 || true
+
+    emit_warning_and_approve "$msg" "$reason"
+}
+
+# Helper to persist circuit breaker state (fails open if persistence fails)
+persist_breaker_state() {
+    local update_msg="$1"
+    local context="$2"
+
+    if ! jwz post "$REVIEW_STATE_TOPIC" -m "$update_msg" >/dev/null 2>&1; then
+        # Can't persist counter - fail open to prevent infinite loop
+        emit_warning_and_approve \
+            "Circuit breaker: failed to persist state ($context). Failing open to prevent infinite loop." \
+            "Circuit breaker state persistence failed"
+    fi
+}
+
+# Handle case where ALICE_MSG_ID is empty (review enabled but no alice status)
+if [[ -z "$ALICE_MSG_ID" ]]; then
+    NEW_NO_ID_COUNT=$((NO_ID_BLOCK_COUNT + 1))
+
+    if [[ $NEW_NO_ID_COUNT -ge $MAX_BLOCKS ]]; then
+        trip_circuit_breaker \
+            "Circuit breaker: blocked $NEW_NO_ID_COUNT times with no alice review ID. Review enabled but alice status unavailable." \
+            "Circuit breaker tripped after $NEW_NO_ID_COUNT blocks with no review ID"
+    fi
+
+    UPDATE_MSG=$(jq -n \
+        --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --argjson count "$NEW_NO_ID_COUNT" \
+        '{enabled: true, timestamp: $ts, no_id_block_count: $count}')
+    persist_breaker_state "$UPDATE_MSG" "no_id_block_count=$NEW_NO_ID_COUNT"
+
+# Check if we're re-blocking on the same stale review
+elif [[ "$ALICE_MSG_ID" == "$LAST_BLOCKED_ID" ]]; then
+    NEW_BLOCK_COUNT=$((BLOCK_COUNT + 1))
+
+    if [[ $NEW_BLOCK_COUNT -ge $MAX_BLOCKS ]]; then
+        trip_circuit_breaker \
+            "Circuit breaker: blocked $NEW_BLOCK_COUNT times on same review ($ALICE_MSG_ID). Agent may be stuck." \
+            "Circuit breaker tripped after $NEW_BLOCK_COUNT blocks on review $ALICE_MSG_ID"
+    fi
+
+    UPDATE_MSG=$(jq -n \
+        --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --arg id "$ALICE_MSG_ID" \
+        --argjson count "$NEW_BLOCK_COUNT" \
+        '{enabled: true, timestamp: $ts, last_blocked_review_id: $id, block_count: $count}')
+    persist_breaker_state "$UPDATE_MSG" "block_count=$NEW_BLOCK_COUNT"
+
+else
+    # New review ID - reset counters
+    UPDATE_MSG=$(jq -n \
+        --arg ts "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+        --arg id "$ALICE_MSG_ID" \
+        '{enabled: true, timestamp: $ts, last_blocked_review_id: $id, block_count: 1, no_id_block_count: 0}')
+    persist_breaker_state "$UPDATE_MSG" "new_review_id=$ALICE_MSG_ID"
 fi
 
 # --- Alice hasn't approved → block ---
