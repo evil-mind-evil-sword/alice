@@ -19,6 +19,10 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "default"')
 
 cd "$CWD"
 
+# Ensure global store is used by default (hooks run in separate processes)
+IDLE_DIR="${HOME}/.claude/idle"
+export JWZ_STORE="${JWZ_STORE:-$IDLE_DIR/.jwz}"
+
 # Emit session end trace event
 if command -v jwz &>/dev/null && [[ -n "$SESSION_ID" ]]; then
     TRACE_TOPIC="trace:$SESSION_ID"

@@ -39,13 +39,9 @@ if command -v jwz &>/dev/null && [[ ! -d "$IDLE_JWZ_STORE" ]]; then
 fi
 
 # Set environment variables for this process AND session persistence
-# Only set if user hasn't already set their own (respects user overrides)
-if [[ -z "${TISSUE_STORE:-}" && -d "$IDLE_TISSUE_STORE" ]]; then
-    export TISSUE_STORE="$IDLE_TISSUE_STORE"
-fi
-if [[ -z "${JWZ_STORE:-}" && -d "$IDLE_JWZ_STORE" ]]; then
-    export JWZ_STORE="$IDLE_JWZ_STORE"
-fi
+# Always default to global store (respects user overrides via existing env vars)
+export TISSUE_STORE="${TISSUE_STORE:-$IDLE_TISSUE_STORE}"
+export JWZ_STORE="${JWZ_STORE:-$IDLE_JWZ_STORE}"
 
 # Persist to CLAUDE_ENV_FILE only if we're using the default idle stores
 # (Don't overwrite user's custom store paths)

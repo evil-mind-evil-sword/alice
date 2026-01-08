@@ -21,6 +21,10 @@ IDLE_MODE_MSG=""
 
 cd "$CWD"
 
+# Ensure global store is used by default (hooks run in separate processes)
+IDLE_DIR="${HOME}/.claude/idle"
+export JWZ_STORE="${JWZ_STORE:-$IDLE_DIR/.jwz}"
+
 # --- Parse #idle command ---
 
 if command -v jwz &>/dev/null && [[ -n "$USER_PROMPT" ]]; then

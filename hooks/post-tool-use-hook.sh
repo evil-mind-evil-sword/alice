@@ -25,6 +25,10 @@ TOOL_SUCCESS=$(echo "$INPUT" | jq 'if .tool_response.success == null then true e
 
 cd "$CWD"
 
+# Ensure global store is used by default (hooks run in separate processes)
+IDLE_DIR="${HOME}/.claude/idle"
+export JWZ_STORE="${JWZ_STORE:-$IDLE_DIR/.jwz}"
+
 # Emit trace event to jwz
 if command -v jwz &>/dev/null && [[ -n "$SESSION_ID" ]]; then
     TRACE_TOPIC="trace:$SESSION_ID"

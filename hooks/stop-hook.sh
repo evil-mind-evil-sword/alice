@@ -32,6 +32,10 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "default"')
 
 cd "$CWD"
 
+# Ensure global store is used by default (hooks run in separate processes)
+IDLE_DIR="${HOME}/.claude/idle"
+export JWZ_STORE="${JWZ_STORE:-$IDLE_DIR/.jwz}"
+
 ALICE_TOPIC="alice:status:$SESSION_ID"
 REVIEW_STATE_TOPIC="review:state:$SESSION_ID"
 WARNINGS_TOPIC="idle:warnings:$SESSION_ID"
