@@ -1,4 +1,4 @@
-//! idle - Trace construction and session management for Claude Code
+//! alice - Trace construction and session management for Claude Code
 //!
 //! This library provides tools for building and querying traces from
 //! Claude Code sessions, using tissue (issues) and zawinski (messages)

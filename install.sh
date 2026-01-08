@@ -1,10 +1,10 @@
 #!/bin/sh
 set -e
 
-# idle installer
-# Usage: curl -fsSL https://evil-mind-evil-sword.github.io/releases/idle/install.sh | sh
+# alice installer
+# Usage: curl -fsSL https://evil-mind-evil-sword.github.io/releases/alice/install.sh | sh
 
-echo "Installing idle plugin..."
+echo "Installing alice plugin..."
 echo ""
 
 # --- Install dependencies ---
@@ -42,7 +42,7 @@ echo ""
 # --- Install plugin via Claude Code ---
 
 if command -v claude >/dev/null 2>&1; then
-    echo "Installing idle plugin via Claude Code..."
+    echo "Installing alice plugin via Claude Code..."
 
     # Add marketplace (idempotent)
     claude plugin marketplace add evil-mind-evil-sword/marketplace 2>/dev/null || true
@@ -52,39 +52,39 @@ if command -v claude >/dev/null 2>&1; then
     claude plugin marketplace update emes 2>/dev/null || true
 
     # Check if already installed
-    if claude plugin list 2>/dev/null | grep -q "idle@emes"; then
-        echo "Updating idle plugin..."
-        if claude plugin update idle@emes 2>/dev/null; then
-            echo "idle plugin updated!"
+    if claude plugin list 2>/dev/null | grep -q "alice@emes"; then
+        echo "Updating alice plugin..."
+        if claude plugin update alice@emes 2>/dev/null; then
+            echo "alice plugin updated!"
         else
             # Fallback: reinstall
-            claude plugin uninstall idle@emes 2>/dev/null || true
-            if claude plugin install idle@emes 2>/dev/null; then
-                echo "idle plugin reinstalled!"
+            claude plugin uninstall alice@emes 2>/dev/null || true
+            if claude plugin install alice@emes 2>/dev/null; then
+                echo "alice plugin reinstalled!"
             else
-                echo "Plugin update failed. Try manually: /plugin update idle@emes"
+                echo "Plugin update failed. Try manually: /plugin update alice@emes"
             fi
         fi
     else
-        echo "Installing idle plugin..."
-        if claude plugin install idle@emes 2>/dev/null; then
-            echo "idle plugin installed!"
+        echo "Installing alice plugin..."
+        if claude plugin install alice@emes 2>/dev/null; then
+            echo "alice plugin installed!"
         else
             echo "Plugin install failed. Try manually in Claude Code:"
             echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
-            echo "  /plugin install idle@emes"
+            echo "  /plugin install alice@emes"
         fi
     fi
 else
     echo "claude CLI not found. Install the plugin manually in Claude Code:"
     echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
-    echo "  /plugin install idle@emes"
+    echo "  /plugin install alice@emes"
 fi
 
 echo ""
 echo "Installation complete!"
 echo ""
-echo "The idle plugin is now active. Use #idle to enable review."
+echo "The alice plugin is now active. Use #alice to enable review."
 echo ""
 echo "Dependencies installed:"
 echo "  jwz     - Agent messaging"

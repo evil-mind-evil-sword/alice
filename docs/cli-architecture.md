@@ -1,4 +1,4 @@
-# idle CLI Architecture
+# alice CLI Architecture
 
 **Status:** Draft
 **Date:** 2026-01-04
@@ -6,7 +6,7 @@
 
 ## Background
 
-v2.2.0 (2025-12-31) removed the Zig CLI entirely, simplifying idle to pure Bash hooks. This document proposes **re-introducing** a Zig CLI for trace construction and session management.
+v2.2.0 (2025-12-31) removed the Zig CLI entirely, simplifying alice to pure Bash hooks. This document proposes **re-introducing** a Zig CLI for trace construction and session management.
 
 **Rationale for reversal:**
 - Traces require efficient queries across tissue + jwz stores
@@ -19,7 +19,7 @@ v2.2.0 (2025-12-31) removed the Zig CLI entirely, simplifying idle to pure Bash 
 
 ## Overview
 
-`idle` evolves from a pure Claude Code plugin into a hybrid package:
+`alice` evolves from a pure Claude Code plugin into a hybrid package:
 
 1. **Claude Code plugin** - hooks, agents, skills (existing)
 2. **Zig CLI tool** - trace queries, session management (new)
@@ -28,7 +28,7 @@ v2.2.0 (2025-12-31) removed the Zig CLI entirely, simplifying idle to pure Bash 
 ## Package Structure
 
 ```
-idle/
+alice/
 ├── .claude-plugin/           # Plugin metadata
 │   ├── plugin.json
 │   └── marketplace.json
@@ -59,7 +59,7 @@ idle/
 
 ## Dependencies
 
-The idle CLI depends on zawinski and tissue as Zig modules.
+The alice CLI depends on zawinski and tissue as Zig modules.
 
 **For local development** (monorepo - default):
 ```zig
@@ -82,7 +82,7 @@ zig fetch --save=tissue "https://github.com/femtomc/tissue/archive/refs/tags/${T
 
 **Note:** `zig fetch --save` downloads the tarball, calculates its cryptographic hash, and updates `build.zig.zon` with the correct `.url` and `.hash` values. The monorepo uses path deps by default; release CI converts to URL deps.
 
-This allows idle to:
+This allows alice to:
 - Query jwz stores directly (no subprocess)
 - Query tissue stores directly (no subprocess)
 - Share SQLite/ULID code
@@ -93,16 +93,16 @@ This allows idle to:
 
 ```bash
 # Show trace for a session
-idle trace <session_id>
-idle trace <session_id> -v              # Verbose: show tool inputs/outputs
-idle trace <session_id> --format dot    # Export as GraphViz
+alice trace <session_id>
+alice trace <session_id> -v              # Verbose: show tool inputs/outputs
+alice trace <session_id> --format dot    # Export as GraphViz
 
 # List recent sessions
-idle sessions
-idle sessions --limit 10
+alice sessions
+alice sessions --limit 10
 
 # Show version
-idle version
+alice version
 ```
 
 **Verbose mode** shows full tool invocation details:
@@ -120,13 +120,13 @@ idle version
 
 ```bash
 # Start a new Claude Code session with tracing
-idle run "prompt here"
+alice run "prompt here"
 
 # Resume a session
-idle resume <session_id>
+alice resume <session_id>
 
 # Watch a session in real-time
-idle watch <session_id>
+alice watch <session_id>
 ```
 
 ## Trace Data Model
@@ -201,14 +201,14 @@ const alice_status = try jwz_store.readTopic("alice:status:" ++ session_id);
 
 **Hook availability in Claude Code** (per [hooks documentation](https://docs.anthropic.com/en/docs/claude-code/hooks)):
 
-| Hook | Claude Code | idle history |
+| Hook | Claude Code | alice history |
 |------|-------------|--------------|
-| `PostToolUse` | ✓ Supported | Never used in idle |
+| `PostToolUse` | ✓ Supported | Never used in alice |
 | `PreToolUse` | ✓ Supported | Added v0.6.0, removed v1.4.0 |
 | `SubagentStop` | ✓ Supported | Removed v1.4.0, re-added v2.1.0, removed v2.2.0 |
-| `SessionEnd` | ✓ Supported | Never used in idle |
+| `SessionEnd` | ✓ Supported | Never used in alice |
 
-We're adding these hooks to idle for trace construction.
+We're adding these hooks to alice for trace construction.
 
 **Hook responsibilities:**
 - `Stop` - Existing: alice review gating (unchanged)
@@ -354,13 +354,13 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-linux
-            artifact: idle-linux-x86_64
+            artifact: alice-linux-x86_64
           - os: macos-latest
             target: x86_64-macos
-            artifact: idle-macos-x86_64
+            artifact: alice-macos-x86_64
           - os: macos-latest
             target: aarch64-macos
-            artifact: idle-macos-aarch64
+            artifact: alice-macos-aarch64
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -388,8 +388,8 @@ jobs:
 ### Phase 4: Trace Queries
 - Implement `src/trace.zig` with trace construction
 - Implement `src/render.zig` with output formats
-- Add `idle trace` command
-- Add `idle sessions` command
+- Add `alice trace` command
+- Add `alice sessions` command
 
 ### Phase 5: Release CI
 - Create `.github/workflows/release.yml`
@@ -403,12 +403,12 @@ jobs:
    - Options: (a) require monorepo checkout, (b) use git URLs in build.zig.zon, (c) vendor copies
    - **Recommendation**: Use git URLs for releases, path overrides for local dev
 
-2. **SQLite sharing**: Each package bundles SQLite - should idle share or bundle its own?
+2. **SQLite sharing**: Each package bundles SQLite - should alice share or bundle its own?
    - Currently tissue and zawinski each vendor sqlite3.c (~2MB each)
-   - idle could link against their sqlite or bundle its own
+   - alice could link against their sqlite or bundle its own
    - **Recommendation**: Bundle own copy for build simplicity
 
 3. **Plugin vs CLI install**: Keep them separate or bundle CLI with plugin?
-   - Plugin is installed via `claude /plugin install idle@emes`
+   - Plugin is installed via `claude /plugin install alice@emes`
    - CLI would need separate install (`curl ... | sh`)
    - **Recommendation**: Separate installs, plugin references CLI if present

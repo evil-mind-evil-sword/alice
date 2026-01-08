@@ -10,11 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Zig CLI for trace queries** - Re-introduced Zig CLI for session trace construction
-  - `idle trace <session_id>` - Show trace for a session
-  - `idle trace <session_id> -v` - Verbose mode showing tool inputs/outputs
-  - `idle trace <session_id> --format dot` - Export as GraphViz DOT
-  - `idle sessions` - List recent sessions (placeholder)
-  - `idle version` - Show version information
+  - `alice trace <session_id>` - Show trace for a session
+  - `alice trace <session_id> -v` - Verbose mode showing tool inputs/outputs
+  - `alice trace <session_id> --format dot` - Export as GraphViz DOT
+  - `alice sessions` - List recent sessions (placeholder)
+  - `alice version` - Show version information
 - **Tool failure tracking** - Traces now capture `success` field from tool responses
   - `[FAILED]` indicator displayed for failed tool calls
   - Helps identify tool invocation issues for debugging
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Alice invocation via Task tool** - Stop hook no longer spawns alice as subprocess
-  - Directs agent to invoke `idle:alice` via Task tool instead
+  - Directs agent to invoke `alice:alice` via Task tool instead
   - Eliminates infinite recursion from hook inheritance
 - **jwz-based status coordination** - Alice posts status to `alice:status:{session_id}`
   - `"complete"` when no issues found
@@ -100,14 +100,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Hooks use PATH** - All hooks now expect `idle` binary in PATH instead of `CLAUDE_PLUGIN_ROOT`
+- **Hooks use PATH** - All hooks now expect `alice` binary in PATH instead of `CLAUDE_PLUGIN_ROOT`
 - **Simplified binary distribution** - Single install script, single binary location
 
 ## [1.6.0] - 2025-12-31
 
 ### Changed
 
-- **`idle init-loop` now initializes tissue** - Single command sets up both `.zawinski/` and `.tissue/`
+- **`alice init-loop` now initializes tissue** - Single command sets up both `.zawinski/` and `.tissue/`
 - **Simplified initialization** - No manual `tissue init` or `jwz init` needed
 - **Updated install script** - Removed manual init steps from "Get started" message
 
@@ -119,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`idle init-loop` command** - Bootstrap loop state from CLI
+- **`alice init-loop` command** - Bootstrap loop state from CLI
   - Initializes `.zawinski/` store if missing
   - Creates `loop:current` topic
   - Posts initial STATE frame with proper schema
@@ -231,15 +231,15 @@ bob (orchestrator, opus)
 
 ### Changed
 
-- **Project renamed from `trivial` to `idle`**
-- All directory paths: `.claude/plugins/idle/`, `.worktrees/idle/`
-- Git branch naming: `idle/issue/<id>`
-- Git config key: `idle.baseRef`
-- Temp directories: `/tmp/idle-*`
-- State files: `.claude/idle-loop.local.md`
+- **Project renamed from `trivial` to `alice`**
+- All directory paths: `.claude/plugins/alice/`, `.worktrees/alice/`
+- Git branch naming: `alice/issue/<id>`
+- Git config key: `alice.baseRef`
+- Temp directories: `/tmp/alice-*`
+- State files: `.claude/alice-loop.local.md`
 - Environment variable for disabling hooks
 - Command namespaces updated
-- GitHub repository: `femtomc/idle`
+- GitHub repository: `femtomc/alice`
 
 ## [0.6.1] - 2025-12-27
 
@@ -275,7 +275,7 @@ bob (orchestrator, opus)
 
 ### Changed
 
-- Issue command creates worktree with branch `idle/issue/<id>`
+- Issue command creates worktree with branch `alice/issue/<id>`
 - Loop state includes worktree_path, branch, base_ref
 - Implementor agent updated with worktree instructions (absolute paths, cd prefix)
 - Loop commands now use jwz for state management
@@ -320,22 +320,22 @@ bob (orchestrator, opus)
 ### Added
 
 - `scripts/search.py` - BM25 search over agent artifacts (uses `uv run`)
-- Inter-agent communication via `.claude/plugins/idle/{agent}/` directories
+- Inter-agent communication via `.claude/plugins/alice/{agent}/` directories
 - YAML frontmatter metadata in artifacts for conversation cross-referencing
 - Search capability documented in all reading agents (oracle, reviewer, documenter)
 
 ### Changed
 
-- Artifact storage moved from `/tmp/idle/` to `.claude/plugins/idle/`
+- Artifact storage moved from `/tmp/alice/` to `.claude/plugins/alice/`
 - Each agent writes to its own subdirectory (librarian/, reviewer/)
-- Added `.claude/plugins/idle/` subdirectories to .gitignore
+- Added `.claude/plugins/alice/` subdirectories to .gitignore
 
 ## [0.3.0] - 2025-12-27
 
 ### Added
 
 - Document command to invoke documenter agent
-- State directory pattern for Codex/Gemini logs (`/tmp/idle-<agent>-$$`)
+- State directory pattern for Codex/Gemini logs (`/tmp/alice-<agent>-$$`)
 - `---SUMMARY---` delimiter for Codex responses
 - `---DOCUMENT---` delimiter for Gemini responses
 - Explicit wait/read blocking instructions in all external model agents

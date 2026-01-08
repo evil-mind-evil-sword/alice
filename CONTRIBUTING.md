@@ -1,13 +1,13 @@
-# Contributing to idle
+# Contributing to alice
 
-Thank you for your interest in contributing to idle!
+Thank you for your interest in contributing to alice!
 
 ## Development Setup
 
 1. Clone the repository:
    ```shell
-   git clone https://github.com/femtomc/idle.git
-   cd idle
+   git clone https://github.com/femtomc/alice.git
+   cd alice
    ```
 
 2. Install dependencies:
@@ -29,7 +29,7 @@ Thank you for your interest in contributing to idle!
 
 4. Test the stop hook:
    ```shell
-   # Use #idle in your prompt to enable alice review
+   # Use #alice in your prompt to enable alice review
    # The stop hook will block exit until alice approves
    ```
 
@@ -56,7 +56,7 @@ Thank you for your interest in contributing to idle!
    - **Workflow**: How the agent operates
    - **Output Format**: Expected response structure
 
-4. The agent becomes available as `idle:your-agent`
+4. The agent becomes available as `alice:your-agent`
 
 See `agents/alice.md` for an example.
 
@@ -114,8 +114,8 @@ Examples:
 ## Testing
 
 ```shell
-# Run hook tests
-bash tests/stop-hook-test.sh
+# Build and run Zig tests
+zig build test
 ```
 
 For manual testing:
@@ -136,4 +136,4 @@ For manual testing:
 
 ## Architecture
 
-For a deeper understanding of how idle works, see [docs/architecture.md](docs/architecture.md).
+For a deeper understanding of how alice works, see [docs/architecture.md](docs/architecture.md).

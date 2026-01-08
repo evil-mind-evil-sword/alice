@@ -4,4 +4,4 @@
 zig-out/
 tui/.zig-cache/
 tui/zig-out/
-bin/idle
+bin/alice

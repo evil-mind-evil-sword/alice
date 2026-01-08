@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-The idle system creates diffuse state across `tissue` (issues) and `jwz` (messages) during agent sessions. Users cannot easily see:
+The alice system creates diffuse state across `tissue` (issues) and `jwz` (messages) during agent sessions. Users cannot easily see:
 
 1. What state was created during a session
 2. Causal relationships between events (what caused what)
@@ -279,8 +279,8 @@ Add optional field to tissue schema and CLI.
 Modify hooks to emit events to `trace:{session_id}`:
 
 **Files:**
-- `idle/hooks/user-prompt-hook.sh` - Emit `prompt_received`
-- `idle/hooks/stop-hook.sh` - Emit `alice_decision` when detected
+- `alice/hooks/user-prompt-hook.sh` - Emit `prompt_received`
+- `alice/hooks/stop-hook.sh` - Emit `alice_decision` when detected
 
 ### Phase 4: Trace query command
 
@@ -339,7 +339,7 @@ What defines session start/end?
 | `trace:{session}` contains `session_end` event | Explicit close |
 | No activity in session for N minutes | Timeout (configurable, default 30min) |
 | Claude Code process exits | Implicit close |
-| Alice decision `COMPLETE` | Natural checkpoint (idle-specific) |
+| Alice decision `COMPLETE` | Natural checkpoint (alice-specific) |
 
 **Recommendation:** Sessions are "open" until explicitly closed or timed out. Alice COMPLETE is a checkpoint within a session, not necessarily the end.
 
@@ -474,7 +474,7 @@ Existing data remains valid. New features degrade gracefully.
 ## Dependencies
 
 - Tissue schema change (Phase 2) - requires tissue release
-- Hook changes (Phase 3) - requires idle release
+- Hook changes (Phase 3) - requires alice release
 - jwz trace command (Phase 4) - requires zawinski release
 
 Phases can be implemented independently and released incrementally.

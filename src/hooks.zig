@@ -4,11 +4,11 @@
 //! replacing the previous bash+jq scripts with direct store access.
 //!
 //! Usage:
-//!   idle hook session-start    < input.json
-//!   idle hook user-prompt      < input.json
-//!   idle hook post-tool-use    < input.json
-//!   idle hook stop             < input.json
-//!   idle hook session-end      < input.json
+//!   alice hook session-start    < input.json
+//!   alice hook user-prompt      < input.json
+//!   alice hook post-tool-use    < input.json
+//!   alice hook stop             < input.json
+//!   alice hook session-end      < input.json
 
 const std = @import("std");
 const zawinski = @import("zawinski");
@@ -175,14 +175,14 @@ pub const AliceStatus = struct {
 // Store Helpers
 // ============================================================================
 
-/// Get the default idle store directory (~/.claude/idle/.jwz)
+/// Get the default alice store directory (~/.claude/alice/.jwz)
 /// Returns a slice that is either from environment or from the provided buffer
-pub fn getIdleJwzStore(buf: []u8) []const u8 {
+pub fn getAliceJwzStore(buf: []u8) []const u8 {
     if (std.posix.getenv("JWZ_STORE")) |store| {
         return store;
     }
     const home = std.posix.getenv("HOME") orelse "/tmp";
-    return std.fmt.bufPrint(buf, "{s}/.claude/idle/.jwz", .{home}) catch "/tmp/.jwz";
+    return std.fmt.bufPrint(buf, "{s}/.claude/alice/.jwz", .{home}) catch "/tmp/.jwz";
 }
 
 /// Ensure parent directory exists
@@ -219,13 +219,13 @@ pub fn emitWarningAndApprove(
     var stderr_buf: [1024]u8 = undefined;
     var stderr_writer = std.fs.File.stderr().writer(&stderr_buf);
     const stderr = &stderr_writer.interface;
-    stderr.print("idle: WARNING: {s}\n", .{warning_msg}) catch {};
+    stderr.print("alice: WARNING: {s}\n", .{warning_msg}) catch {};
     stderr.flush() catch {};
 
     // Layer 2: jwz persistence (best effort)
     if (store) |s| {
         var topic_buf: [128]u8 = undefined;
-        const warnings_topic = std.fmt.bufPrint(&topic_buf, "idle:warnings:{s}", .{session_id}) catch "";
+        const warnings_topic = std.fmt.bufPrint(&topic_buf, "alice:warnings:{s}", .{session_id}) catch "";
         if (warnings_topic.len > 0) {
             var ts_buf: [32]u8 = undefined;
             const timestamp = getTimestamp(&ts_buf);
@@ -246,7 +246,7 @@ pub fn emitWarningAndApprove(
     // Layer 3: approve with additionalContext for inline display
     // Build context message
     var ctx_list: std.ArrayList(u8) = .empty;
-    ctx_list.writer(allocator).print("⚠️ idle: {s}", .{warning_msg}) catch {};
+    ctx_list.writer(allocator).print("⚠️ alice: {s}", .{warning_msg}) catch {};
 
     return .{
         .decision = .approve,
@@ -336,7 +336,7 @@ pub fn getTimestamp(buf: []u8) []const u8 {
 /// SessionEnd hook - marks session end in trace
 pub fn sessionEnd(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     var store_path_buf: [256]u8 = undefined;
-    const store_path = getIdleJwzStore(&store_path_buf);
+    const store_path = getAliceJwzStore(&store_path_buf);
 
     var store = openOrCreateStore(allocator, store_path) catch {
         return HookOutput.approve();
@@ -427,7 +427,7 @@ fn writeJsonValue(value: std.json.Value, writer: anytype) !void {
 /// PostToolUse hook - captures tool execution events for trace
 pub fn postToolUse(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     var store_path_buf: [256]u8 = undefined;
-    const store_path = getIdleJwzStore(&store_path_buf);
+    const store_path = getAliceJwzStore(&store_path_buf);
 
     var store = openOrCreateStore(allocator, store_path) catch {
         return HookOutput.approve();
@@ -500,10 +500,10 @@ pub fn postToolUse(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     return HookOutput.approve();
 }
 
-/// UserPromptSubmit hook - captures user messages and handles #idle command
+/// UserPromptSubmit hook - captures user messages and handles #alice command
 pub fn userPrompt(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     var store_path_buf: [256]u8 = undefined;
-    const store_path = getIdleJwzStore(&store_path_buf);
+    const store_path = getAliceJwzStore(&store_path_buf);
 
     var store = openOrCreateStore(allocator, store_path) catch {
         return HookOutput.approve();
@@ -537,10 +537,10 @@ pub fn userPrompt(allocator: std.mem.Allocator, input: HookInput) HookOutput {
         return HookOutput.approve();
     };
 
-    // Check for #idle command (case-insensitive)
-    var idle_mode_msg: ?[]const u8 = null;
-    if (startsWithIdleCommand(user_prompt)) |cmd| {
-        idle_mode_msg = processIdleCommand(allocator, &store, review_state_topic, timestamp, cmd);
+    // Check for #alice command (case-insensitive)
+    var alice_mode_msg: ?[]const u8 = null;
+    if (startsWithAliceCommand(user_prompt)) |cmd| {
+        alice_mode_msg = processAliceCommand(allocator, &store, review_state_topic, timestamp, cmd);
     }
 
     // Store user message for alice context
@@ -581,22 +581,22 @@ pub fn userPrompt(allocator: std.mem.Allocator, input: HookInput) HookOutput {
         }
     }
 
-    // Return with optional idle mode message
-    if (idle_mode_msg) |msg| {
+    // Return with optional alice mode message
+    if (alice_mode_msg) |msg| {
         return HookOutput.approveWithContext("UserPromptSubmit", msg);
     }
 
     return HookOutput.approve();
 }
 
-const IdleCommand = enum { enable, disable };
+const AliceCommand = enum { enable, disable };
 
-fn processIdleCommand(
+fn processAliceCommand(
     allocator: std.mem.Allocator,
     store: *zawinski.store.Store,
     review_state_topic: []const u8,
     timestamp: []const u8,
-    cmd: IdleCommand,
+    cmd: AliceCommand,
 ) []const u8 {
     switch (cmd) {
         .enable => {
@@ -604,47 +604,47 @@ fn processIdleCommand(
             const state_msg = std.fmt.bufPrint(&state_buf,
                 \\{{"enabled":true,"timestamp":"{s}"}}
             , .{timestamp}) catch {
-                return "idle: WARNING - failed to enable review mode";
+                return "alice: WARNING - failed to enable review mode";
             };
             postToTopic(allocator, store, review_state_topic, state_msg) catch {
-                return "idle: WARNING - failed to enable review mode";
+                return "alice: WARNING - failed to enable review mode";
             };
-            return "idle: review mode ON";
+            return "alice: review mode ON";
         },
         .disable => {
             var state_buf: [256]u8 = undefined;
             const state_msg = std.fmt.bufPrint(&state_buf,
                 \\{{"enabled":false,"timestamp":"{s}","manually_stopped":true}}
             , .{timestamp}) catch {
-                return "idle: WARNING - failed to disable review mode";
+                return "alice: WARNING - failed to disable review mode";
             };
             postToTopic(allocator, store, review_state_topic, state_msg) catch {
-                return "idle: WARNING - failed to disable review mode";
+                return "alice: WARNING - failed to disable review mode";
             };
-            return "idle: review mode OFF (manually stopped)";
+            return "alice: review mode OFF (manually stopped)";
         },
     }
 }
 
-fn startsWithIdleCommand(prompt: []const u8) ?IdleCommand {
-    // Match #idle or #IDLE (case insensitive) at start
-    if (prompt.len < 5) return null;
+fn startsWithAliceCommand(prompt: []const u8) ?AliceCommand {
+    // Match #alice or #ALICE (case insensitive) at start
+    if (prompt.len < 6) return null;
     if (prompt[0] != '#') return null;
 
     const rest = prompt[1..];
-    if (rest.len >= 4 and std.ascii.eqlIgnoreCase(rest[0..4], "idle")) {
-        const after_idle = rest[4..];
+    if (rest.len >= 5 and std.ascii.eqlIgnoreCase(rest[0..5], "alice")) {
+        const after_alice = rest[5..];
         // Check for :stop variant
-        if (after_idle.len >= 5) {
-            if (after_idle[0] == ':' and std.ascii.eqlIgnoreCase(after_idle[1..5], "stop")) {
+        if (after_alice.len >= 5) {
+            if (after_alice[0] == ':' and std.ascii.eqlIgnoreCase(after_alice[1..5], "stop")) {
                 // Must be followed by whitespace or end
-                if (after_idle.len == 5 or std.ascii.isWhitespace(after_idle[5])) {
+                if (after_alice.len == 5 or std.ascii.isWhitespace(after_alice[5])) {
                     return .disable;
                 }
             }
         }
-        // Plain #idle - must be followed by whitespace or end
-        if (after_idle.len == 0 or std.ascii.isWhitespace(after_idle[0])) {
+        // Plain #alice - must be followed by whitespace or end
+        if (after_alice.len == 0 or std.ascii.isWhitespace(after_alice[0])) {
             return .enable;
         }
     }
@@ -673,29 +673,29 @@ fn escapeJsonString(s: []const u8, writer: anytype) !void {
 /// SessionStart hook - injects context and performs health checks
 pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     var store_path_buf: [256]u8 = undefined;
-    const store_path = getIdleJwzStore(&store_path_buf);
+    const store_path = getAliceJwzStore(&store_path_buf);
     const source = input.source orelse "startup";
 
-    // Get idle directory paths
+    // Get alice directory paths
     const home = std.posix.getenv("HOME") orelse "/tmp";
-    var idle_dir_buf: [256]u8 = undefined;
-    const idle_dir = std.fmt.bufPrint(&idle_dir_buf, "{s}/.claude/idle", .{home}) catch "/tmp/.claude/idle";
+    var alice_dir_buf: [256]u8 = undefined;
+    const alice_dir = std.fmt.bufPrint(&alice_dir_buf, "{s}/.claude/alice", .{home}) catch "/tmp/.claude/alice";
     var tissue_store_buf: [256]u8 = undefined;
-    const idle_tissue_store = std.fmt.bufPrint(&tissue_store_buf, "{s}/.tissue", .{idle_dir}) catch "/tmp/.tissue";
+    const alice_tissue_store = std.fmt.bufPrint(&tissue_store_buf, "{s}/.tissue", .{alice_dir}) catch "/tmp/.tissue";
 
-    // Ensure idle directory exists (recursive creation for ~/.claude/idle)
-    std.fs.cwd().makePath(idle_dir) catch {
+    // Ensure alice directory exists (recursive creation for ~/.claude/alice)
+    std.fs.cwd().makePath(alice_dir) catch {
         // Continue anyway - best effort
     };
 
     // Auto-initialize tissue store if not present
-    if (std.fs.accessAbsolute(idle_tissue_store, .{})) |_| {
+    if (std.fs.accessAbsolute(alice_tissue_store, .{})) |_| {
         // Tissue store exists
     } else |_| {
         // Try to initialize tissue store
         if (std.process.Child.run(.{
             .allocator = allocator,
-            .argv = &.{ "tissue", "--store", idle_tissue_store, "init" },
+            .argv = &.{ "tissue", "--store", alice_tissue_store, "init" },
             .max_output_bytes = 256,
         })) |result| {
             allocator.free(result.stdout);
@@ -716,7 +716,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
 
         // Check if we should write TISSUE_STORE
         const current_tissue = std.posix.getenv("TISSUE_STORE");
-        const should_write_tissue = (current_tissue == null or std.mem.eql(u8, current_tissue.?, idle_tissue_store)) and
+        const should_write_tissue = (current_tissue == null or std.mem.eql(u8, current_tissue.?, alice_tissue_store)) and
             std.mem.indexOf(u8, existing_content, "TISSUE_STORE=") == null;
 
         // Check if we should write JWZ_STORE
@@ -733,7 +733,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
                 var writer = wfile.writer(&write_buf);
                 const w = &writer.interface;
                 if (should_write_tissue) {
-                    w.print("export TISSUE_STORE=\"{s}\"\n", .{idle_tissue_store}) catch {};
+                    w.print("export TISSUE_STORE=\"{s}\"\n", .{alice_tissue_store}) catch {};
                 }
                 if (should_write_jwz) {
                     w.print("export JWZ_STORE=\"{s}\"\n", .{store_path}) catch {};
@@ -746,7 +746,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
                     var writer = wfile.writer(&write_buf);
                     const w = &writer.interface;
                     if (should_write_tissue) {
-                        w.print("export TISSUE_STORE=\"{s}\"\n", .{idle_tissue_store}) catch {};
+                        w.print("export TISSUE_STORE=\"{s}\"\n", .{alice_tissue_store}) catch {};
                     }
                     if (should_write_jwz) {
                         w.print("export JWZ_STORE=\"{s}\"\n", .{store_path}) catch {};
@@ -830,7 +830,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
                         , .{timestamp}) catch "";
                         if (cleanup_msg.len > 0) {
                             postToTopic(allocator, &store, review_state_topic, cleanup_msg) catch {};
-                            review_cleaned = "Previous review state cleaned up (was enabled). Use #idle to re-enable.";
+                            review_cleaned = "Previous review state cleaned up (was enabled). Use #alice to re-enable.";
                         }
                     }
                 } else |_| {}
@@ -893,9 +893,9 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
 
     var writer = context_list.writer(allocator);
     writer.print(
-        \\## idle Plugin Active
+        \\## alice Plugin Active
         \\
-        \\You are running with the **idle** plugin.
+        \\You are running with the **alice** plugin.
         \\
         \\### Tool Health
         \\
@@ -908,7 +908,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
         \\
         \\### Review Mode
         \\
-        \\`#idle` enables review mode. **Answer normally.** If alice review is required, you will be blocked and given instructions. Do not proactively invoke alice.
+        \\`#alice` enables review mode. **Answer normally.** If alice review is required, you will be blocked and given instructions. Do not proactively invoke alice.
         \\
         \\### Available Skills
         \\
@@ -930,7 +930,7 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
 /// Stop hook - gates exit on alice review
 pub fn stop(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     var store_path_buf: [256]u8 = undefined;
-    const store_path = getIdleJwzStore(&store_path_buf);
+    const store_path = getAliceJwzStore(&store_path_buf);
 
     var store = openOrCreateStore(allocator, store_path) catch {
         // Fail open - review system can't function
@@ -1296,20 +1296,20 @@ pub fn runHook(base_allocator: std.mem.Allocator, hook_name: []const u8) !void {
 // Tests
 // ============================================================================
 
-test "idle command parsing" {
+test "alice command parsing" {
     const testing = std.testing;
 
-    try testing.expectEqual(IdleCommand.enable, startsWithIdleCommand("#idle").?);
-    try testing.expectEqual(IdleCommand.enable, startsWithIdleCommand("#idle ").?);
-    try testing.expectEqual(IdleCommand.enable, startsWithIdleCommand("#IDLE").?);
-    try testing.expectEqual(IdleCommand.enable, startsWithIdleCommand("#Idle some text").?);
-    try testing.expectEqual(IdleCommand.disable, startsWithIdleCommand("#idle:stop").?);
-    try testing.expectEqual(IdleCommand.disable, startsWithIdleCommand("#idle:stop ").?);
-    try testing.expectEqual(IdleCommand.disable, startsWithIdleCommand("#IDLE:STOP").?);
+    try testing.expectEqual(AliceCommand.enable, startsWithAliceCommand("#alice").?);
+    try testing.expectEqual(AliceCommand.enable, startsWithAliceCommand("#alice ").?);
+    try testing.expectEqual(AliceCommand.enable, startsWithAliceCommand("#ALICE").?);
+    try testing.expectEqual(AliceCommand.enable, startsWithAliceCommand("#Alice some text").?);
+    try testing.expectEqual(AliceCommand.disable, startsWithAliceCommand("#alice:stop").?);
+    try testing.expectEqual(AliceCommand.disable, startsWithAliceCommand("#alice:stop ").?);
+    try testing.expectEqual(AliceCommand.disable, startsWithAliceCommand("#ALICE:STOP").?);
 
-    try testing.expectEqual(@as(?IdleCommand, null), startsWithIdleCommand("idle"));
-    try testing.expectEqual(@as(?IdleCommand, null), startsWithIdleCommand("#idleX"));
-    try testing.expectEqual(@as(?IdleCommand, null), startsWithIdleCommand("#idle:other"));
+    try testing.expectEqual(@as(?AliceCommand, null), startsWithAliceCommand("alice"));
+    try testing.expectEqual(@as(?AliceCommand, null), startsWithAliceCommand("#aliceX"));
+    try testing.expectEqual(@as(?AliceCommand, null), startsWithAliceCommand("#alice:other"));
 }
 
 test "json string escaping" {

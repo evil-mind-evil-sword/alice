@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     const tissue_mod = tissue_dep.module("tissue");
 
     // Library module
-    const mod = b.addModule("idle", .{
+    const mod = b.addModule("alice", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .imports = &.{
@@ -29,13 +29,13 @@ pub fn build(b: *std.Build) void {
 
     // Executable
     const exe = b.addExecutable(.{
-        .name = "idle",
+        .name = "alice",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "idle", .module = mod },
+                .{ .name = "alice", .module = mod },
                 .{ .name = "zawinski", .module = zawinski_mod },
                 .{ .name = "tissue", .module = tissue_mod },
             },

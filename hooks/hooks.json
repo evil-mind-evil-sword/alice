@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "idle hook session-start",
+            "command": "alice hook session-start",
             "timeout": 5
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "idle hook user-prompt",
+            "command": "alice hook user-prompt",
             "timeout": 5
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "idle hook stop",
+            "command": "alice hook stop",
             "timeout": 30
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "idle hook post-tool-use",
+            "command": "alice hook post-tool-use",
             "timeout": 5
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "idle hook session-end",
+            "command": "alice hook session-end",
             "timeout": 5
           }
         ]

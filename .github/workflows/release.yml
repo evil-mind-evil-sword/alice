@@ -20,15 +20,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-linux
-            artifact: idle-linux-x86_64
+            artifact: alice-linux-x86_64
             zig_platform: x86_64-linux
           - os: macos-latest
             target: x86_64-macos
-            artifact: idle-macos-x86_64
+            artifact: alice-macos-x86_64
             zig_platform: aarch64-macos
           - os: macos-latest
             target: aarch64-macos
-            artifact: idle-macos-aarch64
+            artifact: alice-macos-aarch64
             zig_platform: aarch64-macos
 
     runs-on: ${{ matrix.os }}
@@ -69,7 +69,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p dist
-          cp zig-out/bin/idle dist/${{ matrix.artifact }}
+          cp zig-out/bin/alice dist/${{ matrix.artifact }}
           chmod +x dist/${{ matrix.artifact }}
 
       - name: Upload artifact
@@ -106,7 +106,7 @@ jobs:
           done
 
           # Create plugin tarball (excludes .git, tests, docs, src, zig build artifacts)
-          tar -czf release/idle-plugin.tar.gz \
+          tar -czf release/alice-plugin.tar.gz \
             --exclude='.git*' \
             --exclude='tests' \
             --exclude='.github' \
@@ -132,18 +132,18 @@ jobs:
           #!/bin/sh
           set -e
 
-          # idle installer
-          # Usage: curl -fsSL https://evil-mind-evil-sword.github.io/releases/idle/install.sh | sh
+          # alice installer
+          # Usage: curl -fsSL https://evil-mind-evil-sword.github.io/releases/alice/install.sh | sh
           #
           # This installs:
           # - jq (if not present)
           # - jwz (agent messaging)
           # - tissue (issue tracking)
-          # - idle plugin (registered with Claude Code)
+          # - alice plugin (registered with Claude Code)
 
           RELEASES_BASE="https://evil-mind-evil-sword.github.io/releases"
 
-          echo "Installing idle plugin..."
+          echo "Installing alice plugin..."
           echo ""
 
           # --- Install dependencies ---
@@ -181,7 +181,7 @@ jobs:
           # --- Install plugin via Claude Code ---
 
           if command -v claude >/dev/null 2>&1; then
-              echo "Installing idle plugin via Claude Code..."
+              echo "Installing alice plugin via Claude Code..."
 
               # Add marketplace (idempotent)
               claude plugin marketplace add evil-mind-evil-sword/marketplace 2>/dev/null || true
@@ -191,39 +191,39 @@ jobs:
               claude plugin marketplace update emes 2>/dev/null || true
 
               # Check if already installed
-              if claude plugin list 2>/dev/null | grep -q "idle@emes"; then
-                  echo "Updating idle plugin..."
-                  if claude plugin update idle@emes 2>/dev/null; then
-                      echo "idle plugin updated!"
+              if claude plugin list 2>/dev/null | grep -q "alice@emes"; then
+                  echo "Updating alice plugin..."
+                  if claude plugin update alice@emes 2>/dev/null; then
+                      echo "alice plugin updated!"
                   else
                       # Fallback: reinstall
-                      claude plugin uninstall idle@emes 2>/dev/null || true
-                      if claude plugin install idle@emes 2>/dev/null; then
-                          echo "idle plugin reinstalled!"
+                      claude plugin uninstall alice@emes 2>/dev/null || true
+                      if claude plugin install alice@emes 2>/dev/null; then
+                          echo "alice plugin reinstalled!"
                       else
-                          echo "Plugin update failed. Try manually: /plugin update idle@emes"
+                          echo "Plugin update failed. Try manually: /plugin update alice@emes"
                       fi
                   fi
               else
-                  echo "Installing idle plugin..."
-                  if claude plugin install idle@emes 2>/dev/null; then
-                      echo "idle plugin installed!"
+                  echo "Installing alice plugin..."
+                  if claude plugin install alice@emes 2>/dev/null; then
+                      echo "alice plugin installed!"
                   else
                       echo "Plugin install failed. Try manually in Claude Code:"
                       echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
-                      echo "  /plugin install idle@emes"
+                      echo "  /plugin install alice@emes"
                   fi
               fi
           else
               echo "claude CLI not found. Install the plugin manually in Claude Code:"
               echo "  /plugin marketplace add evil-mind-evil-sword/marketplace"
-              echo "  /plugin install idle@emes"
+              echo "  /plugin install alice@emes"
           fi
 
           echo ""
           echo "Installation complete!"
           echo ""
-          echo "The idle plugin is now active. Use #idle to enable review."
+          echo "The alice plugin is now active. Use #alice to enable review."
           echo ""
           echo "Dependencies installed:"
           echo "  jwz     - Agent messaging"
@@ -243,20 +243,20 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
 
           # Prune old versions (keep only latest)
-          rm -rf site/releases/idle/v*
+          rm -rf site/releases/alice/v*
 
           # Deploy new version
-          mkdir -p "site/releases/idle/${VERSION}"
-          cp release/* "site/releases/idle/${VERSION}/"
-          cp release/install.sh "site/releases/idle/install.sh"
+          mkdir -p "site/releases/alice/${VERSION}"
+          cp release/* "site/releases/alice/${VERSION}/"
+          cp release/install.sh "site/releases/alice/install.sh"
 
           # Update manifest with version and binary sizes
           cd site/releases
-          SIZES=$(cd idle/${VERSION} && for f in idle-*; do [ -f "$f" ] && echo "\"$f\": $(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")"; done | paste -sd, -)
+          SIZES=$(cd alice/${VERSION} && for f in alice-*; do [ -f "$f" ] && echo "\"$f\": $(stat -c%s "$f" 2>/dev/null || stat -f%z "$f")"; done | paste -sd, -)
           if [ -f manifest.json ]; then
-            jq --arg v "$VERSION" --argjson sizes "{$SIZES}" '.idle = {version: $v, sizes: $sizes}' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+            jq --arg v "$VERSION" --argjson sizes "{$SIZES}" '.alice = {version: $v, sizes: $sizes}' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
           else
-            echo "{\"idle\": {\"version\": \"$VERSION\", \"sizes\": {$SIZES}}}" > manifest.json
+            echo "{\"alice\": {\"version\": \"$VERSION\", \"sizes\": {$SIZES}}}" > manifest.json
           fi
 
       - name: Commit and push to site
@@ -265,5 +265,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Release idle ${{ steps.version.outputs.version }}" || exit 0
+          git commit -m "Release alice ${{ steps.version.outputs.version }}" || exit 0
           git push

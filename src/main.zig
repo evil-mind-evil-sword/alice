@@ -1,15 +1,15 @@
-//! idle CLI - Trace construction and session management for Claude Code
+//! alice CLI - Trace construction and session management for Claude Code
 //!
 //! Usage:
-//!   idle trace <session_id>              Show trace for a session
-//!   idle trace <session_id> --format dot Export as GraphViz
-//!   idle sessions                        List recent sessions
-//!   idle warnings <session_id>           Show warnings for a session
-//!   idle hook <name>                     Run a Claude Code hook (stdin/stdout)
-//!   idle version                         Show version
+//!   alice trace <session_id>              Show trace for a session
+//!   alice trace <session_id> --format dot Export as GraphViz
+//!   alice sessions                        List recent sessions
+//!   alice warnings <session_id>           Show warnings for a session
+//!   alice hook <name>                     Run a Claude Code hook (stdin/stdout)
+//!   alice version                         Show version
 
 const std = @import("std");
-const idle = @import("idle");
+const alice = @import("alice");
 
 const version = "0.0.0";
 
@@ -59,10 +59,10 @@ pub fn main() !void {
 
 fn printUsage(stdout: anytype) !void {
     try stdout.writeAll(
-        \\idle - Trace construction for Claude Code sessions
+        \\alice - Trace construction for Claude Code sessions
         \\
         \\Usage:
-        \\  idle <command> [options]
+        \\  alice <command> [options]
         \\
         \\Commands:
         \\  trace <session_id>    Show trace for a session
@@ -84,12 +84,12 @@ fn printUsage(stdout: anytype) !void {
         \\  help                  Show this help message
         \\
         \\Examples:
-        \\  idle trace abc123-def456
-        \\  idle trace abc123-def456 -v
-        \\  idle trace abc123-def456 --format dot > trace.dot
-        \\  idle sessions --limit 5
-        \\  idle warnings abc123-def456
-        \\  echo '{"session_id":"abc"}' | idle hook session-end
+        \\  alice trace abc123-def456
+        \\  alice trace abc123-def456 -v
+        \\  alice trace abc123-def456 --format dot > trace.dot
+        \\  alice sessions --limit 5
+        \\  alice warnings abc123-def456
+        \\  echo '{"session_id":"abc"}' | alice hook session-end
         \\
     );
 }
@@ -100,14 +100,14 @@ fn cmdHook(allocator: std.mem.Allocator, args: []const []const u8) !void {
         var stderr_writer = std.fs.File.stderr().writer(&stderr_buf);
         const stderr = &stderr_writer.interface;
         try stderr.writeAll("Error: hook name required\n");
-        try stderr.writeAll("Usage: idle hook <name>\n");
+        try stderr.writeAll("Usage: alice hook <name>\n");
         try stderr.writeAll("Names: session-start, session-end, user-prompt, post-tool-use, stop\n");
         try stderr.flush();
         std.process.exit(1);
     }
 
     const hook_name = args[0];
-    try idle.runHook(allocator, hook_name);
+    try alice.runHook(allocator, hook_name);
 }
 
 fn cmdTrace(allocator: std.mem.Allocator, stdout: anytype, args: []const []const u8) !void {
@@ -145,7 +145,7 @@ fn cmdTrace(allocator: std.mem.Allocator, stdout: anytype, args: []const []const
     // The --jwz and --tissue flags allow explicit paths if needed
 
     // Build trace
-    var trace_obj = try idle.Trace.build(
+    var trace_obj = try alice.Trace.build(
         allocator,
         session_id,
         jwz_path,
@@ -190,7 +190,7 @@ fn cmdSessions(stdout: anytype, args: []const []const u8) !void {
 fn cmdWarnings(allocator: std.mem.Allocator, stdout: anytype, args: []const []const u8) !void {
     if (args.len == 0) {
         try stdout.writeAll("Error: session_id required\n");
-        try stdout.writeAll("Usage: idle warnings <session_id>\n");
+        try stdout.writeAll("Usage: alice warnings <session_id>\n");
         stdout.flush() catch {};
         std.process.exit(1);
     }
@@ -208,7 +208,7 @@ fn cmdWarnings(allocator: std.mem.Allocator, stdout: anytype, args: []const []co
         }
     }
 
-    // Import zawinski through the idle library's exposed module
+    // Import zawinski through the alice library's exposed module
     const zawinski = @import("zawinski");
 
     // Discover or use provided jwz store
@@ -228,8 +228,8 @@ fn cmdWarnings(allocator: std.mem.Allocator, stdout: anytype, args: []const []co
     };
     defer store.deinit();
 
-    // Build topic name: idle:warnings:{session_id}
-    const topic_name = try std.fmt.allocPrint(allocator, "idle:warnings:{s}", .{session_id});
+    // Build topic name: alice:warnings:{session_id}
+    const topic_name = try std.fmt.allocPrint(allocator, "alice:warnings:{s}", .{session_id});
     defer allocator.free(topic_name);
 
     // Fetch messages from warnings topic
@@ -275,10 +275,10 @@ fn cmdWarnings(allocator: std.mem.Allocator, stdout: anytype, args: []const []co
 }
 
 fn cmdVersion(stdout: anytype) !void {
-    try stdout.print("idle {s}\n", .{version});
+    try stdout.print("alice {s}\n", .{version});
 }
 
 test "main compiles" {
     // Just verify the module compiles
-    _ = idle;
+    _ = alice;
 }

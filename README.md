@@ -1,4 +1,4 @@
-# idle
+# alice
 
 Quality gate plugin for Claude Code. Blocks Claude from stopping (via Claude Code's Stop hook) until work passes review by an independent agent. The independent agent uses _consensus review_ when possible (asking Codex and/or Gemini for second opinions).
 
@@ -10,31 +10,31 @@ Quality gate plugin for Claude Code. Blocks Claude from stopping (via Claude Cod
     - I'm thinking about how to optimize this via prompting, but that work hasn't been done yet.
     - When Codex is used within consensus reviewing, in particular, on high or xhigh reasoning will take several minutes to review -- but is extremely thorough. Keep this in mind.
 
-For best results, I would mix in Codex and/or Gemini -- just install the CLIs and auth them, `idle` will pick them up automatically. Mixing multiple agents into the review process _seems_ to really improve the steering.
+For best results, I would mix in Codex and/or Gemini -- just install the CLIs and auth them, `alice` will pick them up automatically. Mixing multiple agents into the review process _seems_ to really improve the steering.
 
 **What this plugin doesn't solve**: what you desire or how you communicate it. Be clear about what you want before you turn it on.
 
 ## Install
 
 ```sh
-curl -fsSL https://evil-mind-evil-sword.github.io/releases/idle/install.sh | sh
+curl -fsSL https://evil-mind-evil-sword.github.io/releases/alice/install.sh | sh
 ```
 
 This installs:
 - `jwz` - Agent messaging
 - `tissue` - Issue tracking
 - `jq` - JSON parsing (if needed)
-- The idle plugin (registered with Claude Code)
+- The alice plugin (registered with Claude Code)
 
-Those other two binaries (`jwz` and `tissue`) are small Zig programs which allow Claude Code to store issues, messages, retain state (all in JSONL + SQLite, like `beads`) -- and are used by `idle` to track the state required to enforce the reviewer pattern (as well as giving Claude Code a place to store issues, research notes, etc). The plugin assumes these binaries are available and contains explicit instructions for how the agent should use them. The goal here is to make it easy to install these and get started (meaning: the goal is you shouldn't have to think about them!)
+Those other two binaries (`jwz` and `tissue`) are small Zig programs which allow Claude Code to store issues, messages, retain state (all in JSONL + SQLite, like `beads`) -- and are used by `alice` to track the state required to enforce the reviewer pattern (as well as giving Claude Code a place to store issues, research notes, etc). The plugin assumes these binaries are available and contains explicit instructions for how the agent should use them. The goal here is to make it easy to install these and get started (meaning: the goal is you shouldn't have to think about them!)
 
 ## Usage
 
 ```
-#idle <your prompt>
+#alice <your prompt>
 ```
 
-`idle` uses the UserInput hook to look at your prompt, parse it, and see if you've invoked `#idle`. It then uses `jwz` to set a session message, enabling the Stop hook.
+`alice` uses the UserInput hook to look at your prompt, parse it, and see if you've invoked `#alice`. It then uses `jwz` to set a session message, enabling the Stop hook.
 
 Review is opt-in per-prompt. After alice approves, the gate resets automatically.
 
@@ -44,7 +44,7 @@ LLMs struggle to reliably evaluate their own outputs ([Huang et al., 2023](https
 
 Research on multi-agent debate suggests a path forward: models produce more accurate outputs when they critique each other ([Du et al., 2023](https://arxiv.org/abs/2305.14325); [Liang et al., 2023](https://arxiv.org/abs/2305.19118)).
 
-idle applies this idea: rather than prompting agents to review themselves, it blocks exit until an independent reviewer (alice, a subagent) explicitly approves.
+alice applies this idea: rather than prompting agents to review themselves, it blocks exit until an independent reviewer (alice, a subagent) explicitly approves.
 
 ## How It Works
 
@@ -52,7 +52,7 @@ idle applies this idea: rather than prompting agents to review themselves, it bl
 Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 ```
 
-- `#idle` at start of prompt enables review (using session state stored via [jwz](https://github.com/evil-mind-evil-sword/zawinski))
+- `#alice` at start of prompt enables review (using session state stored via [jwz](https://github.com/evil-mind-evil-sword/zawinski))
 - **Stop hook** runs on every agent "stop" attempt (when Claude Code stops and waits for you)
     - If review enabled but no approval: blocks exit, agent must spawn alice
     - **alice** (adversarial reviewer) examines the work
@@ -68,7 +68,7 @@ Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 │                         Claude Code                            │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                     idle plugin                          │  │
+│  │                     alice plugin                          │  │
 │  │                                                          │  │
 │  │   ┌─────────┐                                            │  │
 │  │   │  alice  │   Reviewer agent (Claude Opus)             │  │
@@ -93,7 +93,7 @@ Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 
 ## Design Philosophy
 
-Three principles guide idle's architecture:
+Three principles guide alice's architecture:
 
 | Principle | Implementation |
 |-----------|----------------|
@@ -103,7 +103,7 @@ Three principles guide idle's architecture:
 
 ## Skills
 
-idle extends Claude Code with domain-specific capabilities:
+alice extends Claude Code with domain-specific capabilities:
 
 | Skill | Purpose | When to Use |
 |-------|---------|-------------|
@@ -141,7 +141,7 @@ When issues are found, alice creates tissue issues tagged `alice-review` and blo
 
 ## Related Work
 
-| Area | Reference | Relevance to idle |
+| Area | Reference | Relevance to alice |
 |------|-----------|-------------------|
 | Self-correction limits | [Huang et al., 2023](https://arxiv.org/abs/2310.01798) | Motivates using a separate reviewer rather than self-review |
 | Multi-agent debate | [Du et al., 2023](https://arxiv.org/abs/2305.14325) | Supports querying multiple models for review |
@@ -161,17 +161,17 @@ When issues are found, alice creates tissue issues tagged `alice-review` and blo
 
 ## Session Traces
 
-idle captures session events for post-hoc analysis via the `idle` CLI:
+alice captures session events for post-hoc analysis via the `alice` CLI:
 
 ```bash
 # Show trace for a session
-idle trace <session_id>
+alice trace <session_id>
 
 # Verbose mode - see tool inputs and outputs
-idle trace <session_id> -v
+alice trace <session_id> -v
 
 # Export as GraphViz DOT
-idle trace <session_id> --format dot > trace.dot
+alice trace <session_id> --format dot > trace.dot
 ```
 
 **Example output:**
@@ -193,7 +193,7 @@ Traces help debug tool failures and understand agent behavior.
 ## Project Structure
 
 ```
-idle/
+alice/
 ├── .claude-plugin/
 │   └── plugin.json        # Plugin metadata
 ├── agents/

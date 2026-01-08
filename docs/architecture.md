@@ -1,18 +1,18 @@
-# idle Architecture
+# alice Architecture
 
-**idle** is a quality gate plugin for Claude Code.
+**alice** is a quality gate plugin for Claude Code.
 
 ## Usage
 
 ```
-#idle <your prompt>
+#alice <your prompt>
 ```
 
 Review is opt-in per-prompt. After alice approves, the gate resets automatically.
 
 ## Design Philosophy
 
-Three principles guide idle's architecture:
+Three principles guide alice's architecture:
 
 1. **Pull over push.** Agents retrieve context on demand rather than receiving large injections upfront.
 
@@ -27,7 +27,7 @@ Three principles guide idle's architecture:
 │                         Claude Code                            │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │                     idle plugin                          │  │
+│  │                     alice plugin                          │  │
 │  │                                                          │  │
 │  │   ┌─────────┐                                            │  │
 │  │   │  alice  │   Adversarial reviewer (opus)              │  │
@@ -66,7 +66,7 @@ Agent tries to exit
         ▼
    stop-hook.sh
         │
-        ├─► Check if #idle enabled review
+        ├─► Check if #alice enabled review
         │   └─► Not enabled? → allow exit
         │
         ├─► Check jwz for alice decision
@@ -178,7 +178,7 @@ Domain-specific context injected into agents.
 
 ## Trace Hooks
 
-Trace hooks capture session events to jwz for post-hoc analysis via the `idle` CLI.
+Trace hooks capture session events to jwz for post-hoc analysis via the `alice` CLI.
 
 ### Trace Topics
 
@@ -199,20 +199,20 @@ jwz read trace:abc123 --json
 
 ### CLI Commands
 
-The `idle` CLI queries traces from jwz:
+The `alice` CLI queries traces from jwz:
 
 ```bash
 # Show trace for a session
-idle trace <session_id>
+alice trace <session_id>
 
 # Verbose mode - show tool inputs and responses
-idle trace <session_id> -v
+alice trace <session_id> -v
 
 # Export as GraphViz DOT
-idle trace <session_id> --format dot > trace.dot
+alice trace <session_id> --format dot > trace.dot
 
 # List recent sessions
-idle sessions
+alice sessions
 ```
 
 **Example output:**
@@ -277,7 +277,7 @@ Replace `$PLUGIN_ROOT` with the actual plugin path.
 ## File Structure
 
 ```
-idle/
+alice/
 ├── .claude-plugin/
 │   └── plugin.json           # Plugin metadata
 ├── agents/
@@ -317,8 +317,8 @@ Three JSON files track the plugin version:
 
 | File | Location |
 |------|----------|
-| `plugin.json` | `idle/.claude-plugin/` |
-| `marketplace.json` | `idle/.claude-plugin/` |
+| `plugin.json` | `alice/.claude-plugin/` |
+| `marketplace.json` | `alice/.claude-plugin/` |
 | `marketplace.json` | `marketplace/.claude-plugin/` |
 
 ### Automatic Releases
@@ -328,24 +328,24 @@ Push to monorepo `main` triggers automatic CalVer releases via `.github/workflow
 ### Manual Releases
 
 ```bash
-# Calculate CalVer for idle
-./scripts/calver.sh idle
+# Calculate CalVer for alice
+./scripts/calver.sh alice
 
 # Or manually specify version
-./scripts/bump-idle-version.sh 26.1.15
+./scripts/bump-alice-version.sh 26.1.15
 
 # Commit and push
-cd idle
+cd alice
 git add -A && git commit -m "chore: Release v26.1.15"
 cd ..
-./scripts/push-package.sh idle --release v26.1.15
+./scripts/push-package.sh alice --release v26.1.15
 ```
 
 ### Installing/Updating Plugin
 
 ```bash
-claude /plugin uninstall idle
-claude /plugin install idle@emes
+claude /plugin uninstall alice
+claude /plugin install alice@emes
 ```
 
 ## Dependencies
@@ -358,4 +358,4 @@ claude /plugin install idle@emes
 
 ## References
 
-See `docs/references.bib` for academic sources informing idle's design.
+See `docs/references.bib` for academic sources informing alice's design.

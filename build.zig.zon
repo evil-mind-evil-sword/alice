@@ -1,7 +1,7 @@
 .{
-    .name = .idle,
+    .name = .alice,
     .version = "26.1.22",
-    .fingerprint = 0xdc24b5151c985571,
+    .fingerprint = 0x278ebc477491ab37,
     .minimum_zig_version = "0.15.0",
     .dependencies = .{
         .zawinski = .{ .path = "../zawinski" },
