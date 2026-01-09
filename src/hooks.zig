@@ -251,17 +251,14 @@ pub fn emitWarningAndApprove(
         }
     }
 
-    // Layer 3: approve with additionalContext for inline display
-    // Build context message
-    var ctx_list: std.ArrayList(u8) = .empty;
-    ctx_list.writer(allocator).print("⚠️ alice: {s}", .{warning_msg}) catch {};
+    // Layer 3: approve with systemMessage for inline display
+    // Note: Stop hooks don't support hookSpecificOutput, only systemMessage
+    var msg_list: std.ArrayList(u8) = .empty;
+    msg_list.writer(allocator).print("⚠️ alice: {s}", .{warning_msg}) catch {};
 
     return .{
         .decision = .approve,
-        .hookSpecificOutput = .{
-            .hookEventName = "Stop",
-            .additionalContext = ctx_list.items,
-        },
+        .systemMessage = if (msg_list.items.len > 0) msg_list.items else null,
     };
 }
 
