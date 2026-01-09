@@ -141,7 +141,7 @@ fn cmdTrace(allocator: std.mem.Allocator, stdout: anytype, args: []const []const
         }
     }
 
-    // Note: Store auto-discovery is handled by Trace.build() via zawinski.store.discoverStoreDir()
+    // Note: Store auto-discovery is handled by Trace.build() via jwz.store.discoverStoreDir()
     // The --jwz and --tissue flags allow explicit paths if needed
 
     // Build trace
@@ -208,21 +208,21 @@ fn cmdWarnings(allocator: std.mem.Allocator, stdout: anytype, args: []const []co
         }
     }
 
-    // Import zawinski through the alice library's exposed module
-    const zawinski = @import("zawinski");
+    // Import jwz through the alice library's exposed module
+    const jwz = @import("jwz");
 
     // Discover or use provided jwz store
     const store_dir = if (jwz_path) |path|
         path
     else
-        zawinski.store.discoverStoreDir(allocator) catch {
+        jwz.store.discoverStoreDir(allocator) catch {
             try stdout.print("No warnings found for session {s} (no jwz store found)\n", .{session_id});
             return;
         };
     defer if (jwz_path == null) allocator.free(store_dir);
 
     // Open store
-    var store = zawinski.store.Store.open(allocator, store_dir) catch {
+    var store = jwz.store.Store.open(allocator, store_dir) catch {
         try stdout.print("No warnings found for session {s} (could not open jwz store)\n", .{session_id});
         return;
     };

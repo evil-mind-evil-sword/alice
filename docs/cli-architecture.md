@@ -11,7 +11,7 @@ v2.2.0 (2025-12-31) removed the Zig CLI entirely, simplifying alice to pure Bash
 **Rationale for reversal:**
 - Traces require efficient queries across tissue + jwz stores
 - Bash parsing of tool outputs is fragile for trace construction
-- Zig CLI can use tissue/zawinski as libraries (no subprocess overhead)
+- Zig CLI can use tissue/jwz as libraries (no subprocess overhead)
 - Future: CLI can invoke and manage Claude Code itself
 
 **Related documents:**
@@ -59,13 +59,13 @@ alice/
 
 ## Dependencies
 
-The alice CLI depends on zawinski and tissue as Zig modules.
+The alice CLI depends on jwz and tissue as Zig modules.
 
 **For local development** (monorepo - default):
 ```zig
 // build.zig.zon
 .dependencies = .{
-    .zawinski = .{ .path = "../zawinski" },
+    .jwz = .{ .path = "../jwz" },
     .tissue = .{ .path = "../tissue" },
 },
 ```
@@ -76,7 +76,7 @@ CI workflow updates `build.zig.zon` before building using `zig fetch`:
 ```bash
 # scripts/patch-deps-for-release.sh
 # First, remove path deps and add URL deps with correct hashes
-zig fetch --save=zawinski "https://github.com/femtomc/zawinski/archive/refs/tags/${ZAWINSKI_VERSION}.tar.gz"
+zig fetch --save=jwz "https://github.com/evil-mind-evil-sword/jwz/archive/refs/tags/${JWZ_VERSION}.tar.gz"
 zig fetch --save=tissue "https://github.com/femtomc/tissue/archive/refs/tags/${TISSUE_VERSION}.tar.gz"
 ```
 
@@ -321,10 +321,10 @@ pub const Issue = struct {
 CLI: `tissue new "title" --session <session_id>`
 Query: `tissue list --session <session_id>`
 
-### Zawinski: Add session_id to Message
+### JWZ: Add session_id to Message
 
 ```zig
-// zawinski/src/store.zig
+// jwz/src/store.zig
 pub const Message = struct {
     // ... existing fields ...
     session_id: ?[]const u8,  // NEW
@@ -336,7 +336,7 @@ Query: `jwz search --session <session_id> "query"`
 
 ## Release CI
 
-Same pattern as zawinski/tissue:
+Same pattern as jwz/tissue:
 
 ```yaml
 # .github/workflows/release.yml
@@ -382,7 +382,7 @@ jobs:
 
 ### Phase 3: Schema Changes
 - Add `origin_session_id` to tissue
-- Add `session_id` to zawinski
+- Add `session_id` to jwz
 - Update CLIs with new flags
 
 ### Phase 4: Trace Queries
@@ -399,12 +399,12 @@ jobs:
 ## Open Questions
 
 1. **Dependency management**: Use `build.zig.zon` paths or git submodules?
-   - Path deps (`../zawinski`) work in monorepo but break for standalone clones
+   - Path deps (`../jwz`) work in monorepo but break for standalone clones
    - Options: (a) require monorepo checkout, (b) use git URLs in build.zig.zon, (c) vendor copies
    - **Recommendation**: Use git URLs for releases, path overrides for local dev
 
 2. **SQLite sharing**: Each package bundles SQLite - should alice share or bundle its own?
-   - Currently tissue and zawinski each vendor sqlite3.c (~2MB each)
+   - Currently tissue and jwz each vendor sqlite3.c (~2MB each)
    - alice could link against their sqlite or bundle its own
    - **Recommendation**: Bundle own copy for build simplicity
 

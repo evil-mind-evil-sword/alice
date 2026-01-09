@@ -1,5 +1,5 @@
 .tissue/
-.zawinski/
+.jwz/
 .zig-cache/
 zig-out/
 tui/.zig-cache/

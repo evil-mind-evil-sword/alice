@@ -176,7 +176,7 @@ When a session modifies an issue, post to `issue:{issue_id}`:
 
 **Problem:** Using `--as session:{id}` overwrites actor identity. A message from "alice" would lose that attribution.
 
-**Current limitation:** The `--as` flag sets `sender.id`, which is expected to be a ULID for name generation (`zawinski/src/names.zig`). Non-ULID values will produce incorrect derived names.
+**Current limitation:** The `--as` flag sets `sender.id`, which is expected to be a ULID for name generation (`jwz/src/names.zig`). Non-ULID values will produce incorrect derived names.
 
 **Workaround (immediate, no code changes):**
 
@@ -189,7 +189,7 @@ jwz post "research:auth" --role alice -m '[session:xyz123] Research findings...'
 Query by actor role: `jwz read "research:auth" --json | jq '.[] | select(.sender.role == "alice")'`
 Query by session: `jwz search "session:xyz123"`
 
-**Future enhancement (requires zawinski changes):**
+**Future enhancement (requires jwz changes):**
 
 Add explicit `--session` flag to jwz CLI:
 ```bash
@@ -205,10 +205,10 @@ This would store session_id in a dedicated field, separate from sender identity:
 ```
 
 **Required changes for future enhancement:**
-- `zawinski/src/store.zig`: Add `session_id` to Message struct
-- `zawinski/src/sqlite.zig`: Add column + index
-- `zawinski/src/main.zig`: Add `--session` CLI flag
-- `zawinski/src/main.zig`: Add `--filter-session` to search/read commands
+- `jwz/src/store.zig`: Add `session_id` to Message struct
+- `jwz/src/sqlite.zig`: Add column + index
+- `jwz/src/main.zig`: Add `--session` CLI flag
+- `jwz/src/main.zig`: Add `--filter-session` to search/read commands
 
 ### Cross-Session Continuity
 
@@ -252,15 +252,15 @@ This provides immediate traceability via FTS search: `jwz search "session:xyz123
 
 **Files:** Hook scripts and agent conventions only
 
-### Phase 1.5: Zawinski session_id field (optional, enables Phase 4)
+### Phase 1.5: JWZ session_id field (optional, enables Phase 4)
 
 Add `session_id` to jwz Message struct for structured session tracking.
 
 **Files:**
-- `zawinski/src/store.zig` - Add `session_id: ?[]const u8` to Message struct + JSONL serialization
-- `zawinski/src/sqlite.zig` - Add column + index `idx_messages_session`
-- `zawinski/src/main.zig` - Add `--session` flag to `post` command
-- `zawinski/src/main.zig` - Add `--filter-session` to `search`/`read` commands
+- `jwz/src/store.zig` - Add `session_id: ?[]const u8` to Message struct + JSONL serialization
+- `jwz/src/sqlite.zig` - Add column + index `idx_messages_session`
+- `jwz/src/main.zig` - Add `--session` flag to `post` command
+- `jwz/src/main.zig` - Add `--filter-session` to `search`/`read` commands
 
 **Note:** Phase 1.5 is optional but significantly improves Phase 4 trace query performance.
 
@@ -293,8 +293,8 @@ jwz trace xyz123 --format dot # Export as GraphViz DAG
 ```
 
 **Files:**
-- `zawinski/src/main.zig` - Add trace subcommand
-- `zawinski/src/trace.zig` - Trace reconstruction logic
+- `jwz/src/main.zig` - Add trace subcommand
+- `jwz/src/trace.zig` - Trace reconstruction logic
 
 ## Open Questions
 
@@ -475,6 +475,6 @@ Existing data remains valid. New features degrade gracefully.
 
 - Tissue schema change (Phase 2) - requires tissue release
 - Hook changes (Phase 3) - requires alice release
-- jwz trace command (Phase 4) - requires zawinski release
+- jwz trace command (Phase 4) - requires jwz release
 
 Phases can be implemented independently and released incrementally.

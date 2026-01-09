@@ -5,11 +5,11 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Get dependency modules
-    const zawinski_dep = b.dependency("zawinski", .{
+    const jwz_dep = b.dependency("jwz", .{
         .target = target,
         .optimize = optimize,
     });
-    const zawinski_mod = zawinski_dep.module("zawinski");
+    const jwz_mod = jwz_dep.module("jwz");
 
     const tissue_dep = b.dependency("tissue", .{
         .target = target,
@@ -22,7 +22,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .imports = &.{
-            .{ .name = "zawinski", .module = zawinski_mod },
+            .{ .name = "jwz", .module = jwz_mod },
             .{ .name = "tissue", .module = tissue_mod },
         },
     });
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "alice", .module = mod },
-                .{ .name = "zawinski", .module = zawinski_mod },
+                .{ .name = "jwz", .module = jwz_mod },
                 .{ .name = "tissue", .module = tissue_mod },
             },
         }),

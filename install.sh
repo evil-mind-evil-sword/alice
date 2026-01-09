@@ -79,10 +79,10 @@ if ! command -v jq >/dev/null 2>&1; then
     fi
 fi
 
-# Install jwz (zawinski)
+# Install jwz
 if ! command -v jwz >/dev/null 2>&1; then
-    echo "Installing jwz (zawinski)..."
-    curl -fsSL https://evil-mind-evil-sword.github.io/releases/zawinski/install.sh | sh
+    echo "Installing jwz..."
+    curl -fsSL https://evil-mind-evil-sword.github.io/releases/jwz/install.sh | sh
 fi
 
 # Install tissue

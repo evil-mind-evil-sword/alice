@@ -85,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Automatic infrastructure initialization** - SessionStart hook now initializes `.zawinski/`, `.tissue/`, and loop state automatically
+- **Automatic infrastructure initialization** - SessionStart hook now initializes `.jwz/`, `.tissue/`, and loop state automatically
 - **No manual init needed** - Infrastructure is ready before any commands run
 - **Simplified initialization** - Removed init-loop steps from command templates
 
@@ -107,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`alice init-loop` now initializes tissue** - Single command sets up both `.zawinski/` and `.tissue/`
+- **`alice init-loop` now initializes tissue** - Single command sets up both `.jwz/` and `.tissue/`
 - **Simplified initialization** - No manual `tissue init` or `jwz init` needed
 - **Updated install script** - Removed manual init steps from "Get started" message
 
@@ -120,7 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`alice init-loop` command** - Bootstrap loop state from CLI
-  - Initializes `.zawinski/` store if missing
+  - Initializes `.jwz/` store if missing
   - Creates `loop:current` topic
   - Posts initial STATE frame with proper schema
   - Idempotent: detects existing active loop
@@ -300,7 +300,7 @@ bob (orchestrator, opus)
 ### Changed
 
 - Zawinski is now a required dependency (like tissue)
-- Updated install.sh to install zawinski
+- Updated install.sh to install jwz
 - Updated docs/architecture.md with messaging documentation
 - Updated CONTRIBUTING.md with messaging guidelines
 

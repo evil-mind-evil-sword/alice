@@ -11,7 +11,7 @@
 //!   alice hook session-end      < input.json
 
 const std = @import("std");
-const zawinski = @import("zawinski");
+const jwz = @import("jwz");
 
 // ============================================================================
 // Common Types
@@ -202,15 +202,15 @@ fn ensureParentDir(path: []const u8) !void {
 }
 
 /// Open the jwz store, creating it if needed
-pub fn openOrCreateStore(allocator: std.mem.Allocator, path: []const u8) !zawinski.store.Store {
+pub fn openOrCreateStore(allocator: std.mem.Allocator, path: []const u8) !jwz.store.Store {
     // Try to open existing store
-    return zawinski.store.Store.open(allocator, path) catch |err| {
+    return jwz.store.Store.open(allocator, path) catch |err| {
         if (err == error.StoreNotFound) {
             // Ensure parent directory exists first
             ensureParentDir(path) catch {};
             // Initialize new store
-            try zawinski.store.Store.init(allocator, path);
-            return zawinski.store.Store.open(allocator, path);
+            try jwz.store.Store.init(allocator, path);
+            return jwz.store.Store.open(allocator, path);
         }
         return err;
     };
@@ -219,7 +219,7 @@ pub fn openOrCreateStore(allocator: std.mem.Allocator, path: []const u8) !zawins
 /// Emit a warning and fail open - for infrastructure errors that shouldn't block
 pub fn emitWarningAndApprove(
     allocator: std.mem.Allocator,
-    store: ?*zawinski.store.Store,
+    store: ?*jwz.store.Store,
     session_id: []const u8,
     warning_msg: []const u8,
 ) HookOutput {
@@ -266,7 +266,7 @@ pub fn emitWarningAndApprove(
 }
 
 /// Ensure a topic exists
-pub fn ensureTopic(allocator: std.mem.Allocator, store: *zawinski.store.Store, topic: []const u8) !void {
+pub fn ensureTopic(allocator: std.mem.Allocator, store: *jwz.store.Store, topic: []const u8) !void {
     const id = store.createTopic(topic, "") catch |err| {
         if (err != error.TopicExists) return err;
         return; // TopicExists is not an error
@@ -277,7 +277,7 @@ pub fn ensureTopic(allocator: std.mem.Allocator, store: *zawinski.store.Store, t
 /// Post a message to a topic, creating the topic if needed
 pub fn postToTopic(
     allocator: std.mem.Allocator,
-    store: *zawinski.store.Store,
+    store: *jwz.store.Store,
     topic: []const u8,
     body: []const u8,
 ) !void {
@@ -300,7 +300,7 @@ pub const SimpleMessage = struct {
 /// Get the latest message from a topic
 pub fn getLatestMessage(
     allocator: std.mem.Allocator,
-    store: *zawinski.store.Store,
+    store: *jwz.store.Store,
     topic: []const u8,
 ) ?SimpleMessage {
     const messages = store.listMessages(topic, 1) catch return null;
@@ -601,7 +601,7 @@ const AliceCommand = enum { enable, disable };
 
 fn processAliceCommand(
     allocator: std.mem.Allocator,
-    store: *zawinski.store.Store,
+    store: *jwz.store.Store,
     review_state_topic: []const u8,
     timestamp: []const u8,
     cmd: AliceCommand,
@@ -1044,7 +1044,10 @@ pub fn stop(allocator: std.mem.Allocator, input: HookInput) HookOutput {
             \\{{"enabled":false,"timestamp":"{s}"}}
         , .{timestamp}) catch "";
         if (reset_msg.len > 0) {
-            postToTopic(allocator, &store, review_state_topic, reset_msg) catch {};
+            postToTopic(allocator, &store, review_state_topic, reset_msg) catch {
+                // Warn but still approve - the approval itself is valid
+                return emitWarningAndApprove(allocator, &store, input.session_id, "Failed to reset review state after approval. Stop hook may fire repeatedly.");
+            };
         }
 
         return HookOutput.approve();
@@ -1130,7 +1133,7 @@ pub fn stop(allocator: std.mem.Allocator, input: HookInput) HookOutput {
 /// Trip the circuit breaker and disable review
 fn tripCircuitBreaker(
     allocator: std.mem.Allocator,
-    store: *zawinski.store.Store,
+    store: *jwz.store.Store,
     session_id: []const u8,
     review_state_topic: []const u8,
     reason: []const u8,

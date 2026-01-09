@@ -52,7 +52,7 @@ alice applies this idea: rather than prompting agents to review themselves, it b
 Agent works → tries to exit → Stop hook → alice reviewed? → block/allow
 ```
 
-- `#alice` at start of prompt enables review (using session state stored via [jwz](https://github.com/evil-mind-evil-sword/zawinski))
+- `#alice` at start of prompt enables review (using session state stored via [jwz](https://github.com/evil-mind-evil-sword/jwz))
 - **Stop hook** runs on every agent "stop" attempt (when Claude Code stops and waits for you)
     - If review enabled but no approval: blocks exit, agent must spawn alice
     - **alice** (adversarial reviewer) examines the work
@@ -152,7 +152,7 @@ When issues are found, alice creates tissue issues tagged `alice-review` and blo
 
 | Dependency | Purpose | Required |
 |------------|---------|----------|
-| [jwz](https://github.com/evil-mind-evil-sword/zawinski) | Agent messaging and coordination | Yes |
+| [jwz](https://github.com/evil-mind-evil-sword/jwz) | Agent messaging and coordination | Yes |
 | [tissue](https://github.com/evil-mind-evil-sword/tissue) | Git-native issue tracking | Yes |
 | jq | JSON parsing in hooks | Yes |
 | codex | OpenAI CLI for second opinions (reviewing skill) | Optional |

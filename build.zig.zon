@@ -4,7 +4,7 @@
     .fingerprint = 0x278ebc477491ab37,
     .minimum_zig_version = "0.15.0",
     .dependencies = .{
-        .zawinski = .{ .path = "../zawinski" },
+        .jwz = .{ .path = "../jwz" },
         .tissue = .{ .path = "../tissue" },
     },
     .paths = .{

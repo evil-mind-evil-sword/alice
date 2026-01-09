@@ -13,7 +13,7 @@ Thank you for your interest in contributing to alice!
 2. Install dependencies:
    ```shell
    # jwz (messaging)
-   # See: https://github.com/femtomc/zawinski
+   # See: https://github.com/evil-mind-evil-sword/jwz
 
    # tissue (issue tracking)
    # See: https://github.com/femtomc/tissue
@@ -91,7 +91,7 @@ See `skills/messaging/SKILL.md` for a tool documentation skill or `skills/resear
 
 ## Messaging Guidelines
 
-Agents communicate via zawinski messaging (`jwz` CLI). All artifacts and findings are stored in jwz, not local files.
+Agents communicate via jwz messaging. All artifacts and findings are stored in jwz, not local files.
 
 ### Topic Naming
 

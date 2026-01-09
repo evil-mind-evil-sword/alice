@@ -1,7 +1,7 @@
 //! alice - Trace construction and session management for Claude Code
 //!
 //! This library provides tools for building and querying traces from
-//! Claude Code sessions, using tissue (issues) and zawinski (messages)
+//! Claude Code sessions, using tissue (issues) and jwz (messages)
 //! as data sources.
 
 pub const trace = @import("trace.zig");

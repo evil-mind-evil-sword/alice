@@ -49,18 +49,18 @@ jobs:
           # Get latest versions from site manifest
           MANIFEST=$(curl -fsSL "${RELEASES_BASE}/manifest.json" || echo '{}')
 
-          ZAWINSKI_VERSION=$(echo "$MANIFEST" | jq -r '.zawinski.version // "v26.1.1"')
+          JWZ_VERSION=$(echo "$MANIFEST" | jq -r '.jwz.version // "v26.1.1"')
           TISSUE_VERSION=$(echo "$MANIFEST" | jq -r '.tissue.version // "v26.1.1"')
 
-          echo "Using zawinski $ZAWINSKI_VERSION, tissue $TISSUE_VERSION"
+          echo "Using jwz $JWZ_VERSION, tissue $TISSUE_VERSION"
 
           # Remove path dependencies before fetching URL dependencies
           # (zig fetch --save with existing path deps puts URL in .path field incorrectly)
           # Use -i.bak for portability (BSD sed on macOS requires suffix argument)
-          sed -i.bak -e 's/\.zawinski = \.{ \.path = "[^"]*" },//' -e 's/\.tissue = \.{ \.path = "[^"]*" },//' build.zig.zon && rm -f build.zig.zon.bak
+          sed -i.bak -e 's/\.jwz = \.{ \.path = "[^"]*" },//' -e 's/\.tissue = \.{ \.path = "[^"]*" },//' build.zig.zon && rm -f build.zig.zon.bak
 
           # Fetch and save dependencies (creates .url and .hash fields)
-          zig fetch --save=zawinski "https://github.com/evil-mind-evil-sword/zawinski/archive/refs/tags/${ZAWINSKI_VERSION}.tar.gz"
+          zig fetch --save=jwz "https://github.com/evil-mind-evil-sword/jwz/archive/refs/tags/${JWZ_VERSION}.tar.gz"
           zig fetch --save=tissue "https://github.com/evil-mind-evil-sword/tissue/archive/refs/tags/${TISSUE_VERSION}.tar.gz"
 
       - name: Build
@@ -216,10 +216,10 @@ jobs:
               fi
           fi
 
-          # Install jwz (zawinski)
+          # Install jwz
           if ! command -v jwz >/dev/null 2>&1; then
-              echo "Installing jwz (zawinski)..."
-              curl -fsSL "${RELEASES_BASE}/zawinski/install.sh" | sh
+              echo "Installing jwz..."
+              curl -fsSL "${RELEASES_BASE}/jwz/install.sh" | sh
           fi
 
           # Install tissue

@@ -1,10 +1,10 @@
-//! Trace construction from tissue and zawinski stores
+//! Trace construction from tissue and jwz stores
 //!
 //! Traces capture sequences of events from Claude Code sessions,
 //! enabling post-hoc analysis and explanation of agent behavior.
 
 const std = @import("std");
-const zawinski = @import("zawinski");
+const jwz = @import("jwz");
 
 /// Event types that can appear in a trace
 pub const EventType = enum {
@@ -87,14 +87,14 @@ pub const Trace = struct {
         const store_dir = if (jwz_store_path) |path|
             path
         else
-            zawinski.store.discoverStoreDir(allocator) catch {
+            jwz.store.discoverStoreDir(allocator) catch {
                 // No store found, return empty trace
                 return Trace.init(allocator, session_id);
             };
         defer if (jwz_store_path == null) allocator.free(store_dir);
 
         // Open store
-        var store = zawinski.store.Store.open(allocator, store_dir) catch {
+        var store = jwz.store.Store.open(allocator, store_dir) catch {
             return Trace.init(allocator, session_id);
         };
         defer store.deinit();
@@ -147,7 +147,7 @@ pub const Trace = struct {
     fn parseTraceEvent(
         allocator: std.mem.Allocator,
         session_id: []const u8,
-        msg: zawinski.store.Message,
+        msg: jwz.store.Message,
     ) !TraceEvent {
         // Parse JSON body
         const parsed = try std.json.parseFromSlice(
