@@ -172,9 +172,9 @@ jobs:
           if [ -n "$ALICE_VERSION" ]; then
             VERSION="$ALICE_VERSION"
           else
-            VERSION=$(curl -fsSL "${RELEASES_BASE}/manifest.json" 2>/dev/null | grep -o '"alice"[^}]*' | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/' || echo "")
+            VERSION=$(curl -fsSL "${RELEASES_BASE}/manifest.json" 2>/dev/null | tr -d '\n\r\t ' | grep -oE '"alice":\{"version":"[^"]*"' | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' || echo "")
             if [ -z "$VERSION" ]; then
-              VERSION="v26.1.23"
+              VERSION="__FALLBACK_VERSION__"
             fi
           fi
 
@@ -284,6 +284,8 @@ jobs:
           echo "  tissue  - Issue tracking"
           EOF
           chmod +x release/install.sh
+          # Replace placeholder with actual release version
+          sed -i "s/__FALLBACK_VERSION__/${{ steps.version.outputs.version }}/g" release/install.sh
 
       - name: Checkout site repo
         uses: actions/checkout@v4
