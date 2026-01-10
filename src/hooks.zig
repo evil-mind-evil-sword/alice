@@ -688,31 +688,35 @@ fn escapeJsonString(s: []const u8, writer: anytype) !void {
 
 /// SessionStart hook - injects context and performs health checks
 pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
-    // Use standard store discovery - respects user's env vars and local stores
-    const store_path = getAliceJwzStore(allocator) orelse {
-        // Can't find any jwz store - continue without store features
-        return HookOutput.approve();
-    };
-    defer allocator.free(store_path);
     const source = input.source orelse "startup";
 
     // Discover tissue store path (for health check display only)
     const tissue_path = tissue.store.discoverStoreDir(allocator) catch null;
     defer if (tissue_path) |p| allocator.free(p);
 
-    // Try to open/create store
-    var store = openOrCreateStore(allocator, store_path) catch |err| {
-        var msg_buf: [256]u8 = undefined;
-        const err_msg = std.fmt.bufPrint(&msg_buf, "jwz store error: {s}", .{@errorName(err)}) catch "jwz store error";
-        return HookOutput.approveWithContext("SessionStart", err_msg);
-    };
-    defer store.deinit();
+    // Try to discover and open jwz store - continue with degraded functionality if it fails
+    var jwz_status: []const u8 = "no store";
+    var store_path_owned: ?[]const u8 = null;
+    var store: ?jwz.store.Store = null;
+
+    if (getAliceJwzStore(allocator)) |path| {
+        store_path_owned = path;
+        if (openOrCreateStore(allocator, path)) |s| {
+            store = s;
+            jwz_status = "ok";
+        } else |err| {
+            // Store path found but couldn't open - report the specific error
+            var err_buf: [64]u8 = undefined;
+            jwz_status = std.fmt.bufPrint(&err_buf, "error: {s}", .{@errorName(err)}) catch "error";
+        }
+    }
+    defer if (store_path_owned) |p| allocator.free(p);
+    defer if (store) |*s| s.deinit();
 
     var ts_buf: [32]u8 = undefined;
     const timestamp = getTimestamp(&ts_buf);
 
     // Health check status
-    const jwz_status: []const u8 = "ok";
     var tissue_status: []const u8 = "not installed";
     var codex_status: []const u8 = "not installed";
     var gemini_status: []const u8 = "not installed";
@@ -780,33 +784,35 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
         if (result.term.Exited == 0) gemini_status = "ok";
     } else |_| {}
 
-    // Clean up stale review state (except on compact)
+    // Clean up stale review state (except on compact) - only if store is available
     var review_cleaned: ?[]const u8 = null;
-    if (!std.mem.eql(u8, source, "compact")) {
-        var review_topic_buf: [128]u8 = undefined;
-        const review_state_topic = std.fmt.bufPrint(&review_topic_buf, "review:state:{s}", .{input.session_id}) catch "";
+    if (store) |*s| {
+        if (!std.mem.eql(u8, source, "compact")) {
+            var review_topic_buf: [128]u8 = undefined;
+            const review_state_topic = std.fmt.bufPrint(&review_topic_buf, "review:state:{s}", .{input.session_id}) catch "";
 
-        if (review_state_topic.len > 0) {
-            if (getLatestMessage(allocator, &store, review_state_topic)) |msg| {
-                defer msg.deinit(allocator);
+            if (review_state_topic.len > 0) {
+                if (getLatestMessage(allocator, s, review_state_topic)) |msg| {
+                    defer msg.deinit(allocator);
 
-                // Parse to check if enabled
-                if (std.json.parseFromSlice(ReviewState, allocator, msg.body, .{
-                    .ignore_unknown_fields = true,
-                })) |parsed| {
-                    defer parsed.deinit();
-                    if (parsed.value.enabled) {
-                        // Clean up stale state
-                        var cleanup_buf: [256]u8 = undefined;
-                        const cleanup_msg = std.fmt.bufPrint(&cleanup_buf,
-                            \\{{"enabled":false,"timestamp":"{s}","session_start_cleanup":true}}
-                        , .{timestamp}) catch "";
-                        if (cleanup_msg.len > 0) {
-                            postToTopic(allocator, &store, review_state_topic, cleanup_msg) catch {};
-                            review_cleaned = "Previous review state cleaned up (was enabled). Use #alice to re-enable.";
+                    // Parse to check if enabled
+                    if (std.json.parseFromSlice(ReviewState, allocator, msg.body, .{
+                        .ignore_unknown_fields = true,
+                    })) |parsed| {
+                        defer parsed.deinit();
+                        if (parsed.value.enabled) {
+                            // Clean up stale state
+                            var cleanup_buf: [256]u8 = undefined;
+                            const cleanup_msg = std.fmt.bufPrint(&cleanup_buf,
+                                \\{{"enabled":false,"timestamp":"{s}","session_start_cleanup":true}}
+                            , .{timestamp}) catch "";
+                            if (cleanup_msg.len > 0) {
+                                postToTopic(allocator, s, review_state_topic, cleanup_msg) catch {};
+                                review_cleaned = "Previous review state cleaned up (was enabled). Use #alice to re-enable.";
+                            }
                         }
-                    }
-                } else |_| {}
+                    } else |_| {}
+                }
             }
         }
     }
@@ -846,16 +852,18 @@ pub fn sessionStart(allocator: std.mem.Allocator, input: HookInput) HookOutput {
     }
     const skills = if (skills_len > 0) skills_buf[0..skills_len] else "None detected";
 
-    // Emit session_start trace event
-    var trace_topic_buf: [128]u8 = undefined;
-    const trace_topic = std.fmt.bufPrint(&trace_topic_buf, "trace:{s}", .{input.session_id}) catch "";
-    if (trace_topic.len > 0) {
-        var trace_buf: [256]u8 = undefined;
-        const trace_msg = std.fmt.bufPrint(&trace_buf,
-            \\{{"event_type":"session_start","timestamp":"{s}","source":"{s}"}}
-        , .{ timestamp, source }) catch "";
-        if (trace_msg.len > 0) {
-            postToTopic(allocator, &store, trace_topic, trace_msg) catch {};
+    // Emit session_start trace event - only if store is available
+    if (store) |*s| {
+        var trace_topic_buf: [128]u8 = undefined;
+        const trace_topic = std.fmt.bufPrint(&trace_topic_buf, "trace:{s}", .{input.session_id}) catch "";
+        if (trace_topic.len > 0) {
+            var trace_buf: [256]u8 = undefined;
+            const trace_msg = std.fmt.bufPrint(&trace_buf,
+                \\{{"event_type":"session_start","timestamp":"{s}","source":"{s}"}}
+            , .{ timestamp, source }) catch "";
+            if (trace_msg.len > 0) {
+                postToTopic(allocator, s, trace_topic, trace_msg) catch {};
+            }
         }
     }
 
